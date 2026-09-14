@@ -1,0 +1,12 @@
+# Copie este conteúdo para o Caddy da VPS e troque pelo domínio completo.
+# O HTTPS automático do Caddy é o que permite instalar o PWA em celular.
+
+app.seu-dominio.tld {
+    encode gzip
+    reverse_proxy 127.0.0.1:3001
+}
+
+api.seu-dominio.tld {
+    encode gzip
+    reverse_proxy 127.0.0.1:8081
+}

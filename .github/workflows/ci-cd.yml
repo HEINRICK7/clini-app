@@ -1,0 +1,140 @@
+name: Clini frontend CI/CD
+
+on:
+  pull_request:
+    branches: [homolog, main]
+  push:
+    branches: [homolog, main]
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE_NAME: heinrick7/clini-app
+  BACKEND_IMAGE_NAME: heinrick7/clini-backend
+
+jobs:
+  test:
+    name: Test frontend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Unit tests
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+  deploy:
+    name: Build and deploy frontend
+    needs: test
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Build and publish frontend image
+        env:
+          IMAGE: ghcr.io/${{ env.IMAGE_NAME }}
+        run: |
+          set -euo pipefail
+          test_login=false
+          if [ "$GITHUB_REF_NAME" = "homolog" ]; then
+            test_login=true
+          fi
+          docker build \
+            --build-arg NEXT_PUBLIC_API_BASE_URL=/api/v1 \
+            --build-arg CLINI_INTERNAL_API_URL=http://backend:8080 \
+            --build-arg NEXT_PUBLIC_ENABLE_TEST_LOGIN="$test_login" \
+            --tag "$IMAGE:${GITHUB_REF_NAME}" \
+            --tag "$IMAGE:${GITHUB_SHA}" \
+            .
+          docker push "$IMAGE:${GITHUB_REF_NAME}"
+          docker push "$IMAGE:${GITHUB_SHA}"
+
+      - name: Deploy to VPS
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_PORT: ${{ secrets.VPS_PORT || '22' }}
+          VPS_SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+          VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+          VPS_DEPLOY_PATH_HOMOLOG: ${{ secrets.VPS_DEPLOY_PATH_HOMOLOG }}
+          VPS_DEPLOY_PATH_MAIN: ${{ secrets.VPS_DEPLOY_PATH_MAIN }}
+          VPS_GHCR_USERNAME: ${{ secrets.VPS_GHCR_USERNAME }}
+          VPS_GHCR_TOKEN: ${{ secrets.VPS_GHCR_TOKEN }}
+          BACKEND_IMAGE: ghcr.io/${{ env.BACKEND_IMAGE_NAME }}
+          FRONTEND_IMAGE: ghcr.io/${{ env.IMAGE_NAME }}
+        run: |
+          set -euo pipefail
+
+          case "$GITHUB_REF_NAME" in
+            homolog)
+              environment_tag=homolog
+              deploy_dir="$VPS_DEPLOY_PATH_HOMOLOG"
+              ;;
+            main)
+              environment_tag=main
+              deploy_dir="$VPS_DEPLOY_PATH_MAIN"
+              ;;
+            *)
+              echo "Branch sem ambiente de deploy: $GITHUB_REF_NAME"
+              exit 1
+              ;;
+          esac
+
+          : "${VPS_HOST:?Configure VPS_HOST}"
+          : "${VPS_USER:?Configure VPS_USER}"
+          : "${VPS_SSH_PRIVATE_KEY:?Configure VPS_SSH_PRIVATE_KEY}"
+          : "${deploy_dir:?Configure o diretório da VPS para este ambiente}"
+
+          ssh_dir="$(mktemp -d)"
+          trap 'rm -rf "$ssh_dir"' EXIT
+          printf '%s\n' "$VPS_SSH_PRIVATE_KEY" > "$ssh_dir/id_ed25519"
+          chmod 600 "$ssh_dir/id_ed25519"
+
+          if [ -n "$VPS_KNOWN_HOSTS" ]; then
+            printf '%s\n' "$VPS_KNOWN_HOSTS" > "$ssh_dir/known_hosts"
+          else
+            ssh-keyscan -H -p "$VPS_PORT" "$VPS_HOST" > "$ssh_dir/known_hosts"
+          fi
+
+          ssh_args=(-i "$ssh_dir/id_ed25519" -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$ssh_dir/known_hosts" -p "$VPS_PORT")
+          scp_args=(-i "$ssh_dir/id_ed25519" -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$ssh_dir/known_hosts" -P "$VPS_PORT")
+          remote="$VPS_USER@$VPS_HOST"
+
+          ssh "${ssh_args[@]}" "$remote" "mkdir -p '$deploy_dir'"
+          scp "${scp_args[@]}" deploy/docker-compose.yml deploy/Caddyfile.example "$remote:$deploy_dir/"
+
+          if [ -n "$VPS_GHCR_TOKEN" ]; then
+            {
+              printf '%s\n' "$VPS_GHCR_USERNAME"
+              printf '%s\n' "$VPS_GHCR_TOKEN"
+            } | ssh "${ssh_args[@]}" "$remote" 'read -r ghcr_user && read -r ghcr_token && printf "%s" "$ghcr_token" | docker login ghcr.io --username "$ghcr_user" --password-stdin'
+          fi
+
+          ssh "${ssh_args[@]}" "$remote" "cd '$deploy_dir' && test -f .env && CLINI_ENV='$environment_tag' BACKEND_IMAGE='$BACKEND_IMAGE:$environment_tag' FRONTEND_IMAGE='$FRONTEND_IMAGE:$environment_tag' docker compose pull frontend && CLINI_ENV='$environment_tag' BACKEND_IMAGE='$BACKEND_IMAGE:$environment_tag' FRONTEND_IMAGE='$FRONTEND_IMAGE:$environment_tag' docker compose up -d --remove-orphans frontend && docker compose ps"
