@@ -21,5 +21,6 @@ O workflow usa o `GITHUB_TOKEN` temporário para autenticar no GHCR, sem token
 permanente na VPS.
 
 O frontend usa o proxy same-origin `/api/v1`, então o navegador não precisa
-conhecer a porta interna do backend. Para o endereço público da API, use o
-host `api` no Caddy; para o app, use o host `app`.
+conhecer a porta interna do backend. Nesta VPS, o Nginx encaminha
+`app.clini-homolog.otimizanegocio.com` para o frontend e
+`api.clini-homolog.otimizanegocio.com` para o backend.
