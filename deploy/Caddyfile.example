@@ -1,12 +1,23 @@
-# Copie este conteúdo para o Caddy da VPS e troque pelo domínio completo.
+# Copie este conteúdo para o Caddy da VPS e troque `seu-dominio.tld` pelo
+# domínio completo da zona DNS da Hostinger.
 # O HTTPS automático do Caddy é o que permite instalar o PWA em celular.
 
-app.seu-dominio.tld {
+app.clini-homolog.seu-dominio.tld {
     encode gzip
     reverse_proxy 127.0.0.1:3001
 }
 
-api.seu-dominio.tld {
+api.clini-homolog.seu-dominio.tld {
     encode gzip
     reverse_proxy 127.0.0.1:8081
+}
+
+app.clini.seu-dominio.tld {
+    encode gzip
+    reverse_proxy 127.0.0.1:3000
+}
+
+api.clini.seu-dominio.tld {
+    encode gzip
+    reverse_proxy 127.0.0.1:8080
 }
