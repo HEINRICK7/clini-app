@@ -7,6 +7,7 @@ import Link from "next/link";
 import { Bell, LogOut } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { ApiError } from "@/lib/api/client";
 import { getCurrentSession, logout, type AuthSession } from "@/modules/auth/api";
 
@@ -70,6 +71,5 @@ export function SessionHeader() {
   const router = useRouter();
   const session = useAuthSession();
   const logoutMutation = useMutation({ mutationFn: logout, onSuccess: () => { router.replace("/login"); router.refresh(); } });
-  const initials = session.name.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase();
-  return <div className="flex items-center gap-2"><Link aria-label="Abrir notificações" className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full text-brand-navy transition-colors hover:bg-surface-muted" href="/more"><Bell aria-hidden="true" className="h-5 w-5" /></Link><div aria-label={`${session.name}, dentista proprietário`} className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-brand-navy text-xs font-bold text-white" title={session.name}>{initials}</div><button aria-label="Sair da conta" className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-xl text-xs font-semibold text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground disabled:opacity-60 sm:min-w-0 sm:px-3" disabled={logoutMutation.isPending} onClick={() => logoutMutation.mutate()} type="button"><LogOut aria-hidden="true" className="h-4 w-4" /><span className="hidden sm:inline">{logoutMutation.isPending ? "Saindo…" : "Sair"}</span></button></div>;
+  return <div className="flex items-center gap-2"><Link aria-label="Abrir notificações" className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full text-brand-navy transition-colors hover:bg-surface-muted" href="/more"><Bell aria-hidden="true" className="h-5 w-5" /></Link><UserAvatar name={session.name} seed={session.userId || session.email} size="sm" /><button aria-label="Sair da conta" className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-xl text-xs font-semibold text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground disabled:opacity-60 sm:min-w-0 sm:px-3" disabled={logoutMutation.isPending} onClick={() => logoutMutation.mutate()} type="button"><LogOut aria-hidden="true" className="h-4 w-4" /><span className="hidden sm:inline">{logoutMutation.isPending ? "Saindo…" : "Sair"}</span></button></div>;
 }

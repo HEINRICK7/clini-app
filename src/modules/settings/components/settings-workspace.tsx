@@ -6,6 +6,7 @@ import { Bell, Building2, ChevronRight, CircleHelp, LogOut, SlidersHorizontal, U
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { logout } from "@/modules/auth/api";
 import { useAuthSession, useCurrentUnit } from "@/modules/auth/components/auth-gate";
 
@@ -26,7 +27,7 @@ export function SettingsWorkspace() {
     <Card className="overflow-hidden p-0">
       <div className="border-b border-border px-5 py-6 sm:px-6">
         <div className="flex items-center gap-3">
-          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-navy text-sm font-bold text-white">{session.name.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase()}</span>
+          <UserAvatar name={session.name} seed={session.userId || session.email} size="lg" />
           <div className="min-w-0"><h2 className="truncate text-lg font-bold text-brand-navy">{session.name}</h2><p className="mt-0.5 text-sm text-muted-foreground">Dentista · Proprietário</p></div>
         </div>
       </div>

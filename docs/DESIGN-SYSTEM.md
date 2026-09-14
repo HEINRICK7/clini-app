@@ -22,6 +22,7 @@ Os tokens vivem em `src/app/globals.css` e são expostos ao Tailwind. Componente
 - `Button`: ações com alvo mínimo de 44px e variantes `primary`, `outline` e `ghost`.
 - `Card`: superfície padrão para conteúdo agrupado.
 - `Badge`: status curto e não interativo.
+- `UserAvatar`: avatar circular determinístico no estilo Boring Avatars, variante `beam`, com seed estável e paleta derivada dos tokens Clini. Todo usuário exibido visualmente deve usar este componente; não usar fotos, iniciais soltas ou ícones genéricos como fallback.
 
 Novos componentes devem ser adicionados em `src/components/ui` somente quando forem reutilizados por mais de um módulo. Componentes específicos de um domínio ficam no módulo correspondente.
 

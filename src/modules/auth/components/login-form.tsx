@@ -58,29 +58,29 @@ export function LoginForm() {
   return (
     <section
       aria-labelledby="login-title"
-      className="flex min-h-[100dvh] w-full max-w-md flex-col bg-surface px-5 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-[calc(env(safe-area-inset-bottom)+1.5rem)] sm:px-8"
+      className="flex min-h-[100dvh] w-full max-w-[22rem] flex-col bg-surface px-5 pt-[calc(env(safe-area-inset-top)+1rem)] pb-[calc(env(safe-area-inset-bottom)+1rem)]"
     >
       <button
         aria-label="Voltar"
-        className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-brand-navy transition-colors hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-brand-navy transition-colors hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
         onClick={() => router.back()}
         type="button"
       >
         <ArrowLeft aria-hidden="true" className="h-[22px] w-[22px]" />
       </button>
 
-      <div className="mt-2 flex justify-center">
-        <Image alt="Clini" className="h-auto w-24" height={1254} priority={false} src="/icon-sem-slogan.png" width={1254} />
+      <div className="mt-1 flex justify-center">
+        <Image alt="Clini" className="h-auto w-[4.5rem]" height={1254} priority src="/icon-sem-slogan.png" width={1254} />
       </div>
 
-      <header className="mt-5">
+      <header className="mt-4">
         <h1 className="text-2xl font-bold leading-[1.2] tracking-tight text-brand-navy" id="login-title">
           Bem-vinda de volta
         </h1>
         <p className="mt-1 text-sm leading-6 text-muted-foreground">Entre para continuar no Clini</p>
       </header>
 
-      <form className="mt-8 grid gap-5" onSubmit={handleSubmit}>
+      <form className="mt-8 grid gap-6" onSubmit={handleSubmit}>
         <div>
           <label className="mb-2 block text-sm font-semibold text-brand-navy" htmlFor="email">
             E-mail

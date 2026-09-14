@@ -3,10 +3,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useState } from "react";
-import { CalendarPlus, ClipboardPenLine, FileClock, Phone, UserRound } from "lucide-react";
+import { CalendarPlus, ClipboardPenLine, FileClock, Phone } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { ApiError } from "@/lib/api/client";
 import { listClinicalEvolutions, type ClinicalEvolution } from "@/modules/clinical/api";
 import { listTreatments, type Treatment } from "@/modules/clinical/treatment-api";
@@ -49,12 +50,10 @@ export function PatientProfileScreen({ patientId }: { patientId: string }) {
 
   const nextAppointment = agendaQuery.data?.appointments.find((appointment) => appointment.patientId === patient.id && appointment.status !== "CANCELED");
   const activeTreatment = treatmentsQuery.data?.items.find((treatment) => treatment.status === "ACTIVE");
-  const initials = patient.fullName.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase();
-
   return <section className="mx-auto grid w-full max-w-2xl gap-4">
     <Link className="inline-flex min-h-10 w-fit items-center text-sm font-semibold text-primary hover:text-primary-strong" href="/patients">← Voltar para pacientes</Link>
     <Card className="p-5 sm:p-6">
-      <div className="flex items-start gap-3"><span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-surface-muted text-lg font-bold text-brand-navy">{initials || <UserRound aria-hidden="true" className="h-6 w-6" />}</span><div className="min-w-0 flex-1"><h1 className="truncate text-xl font-bold tracking-tight text-brand-navy">{patient.fullName}</h1><p className="mt-1 text-sm text-muted-foreground">{patient.phone ?? "Sem telefone"}{patient.provisional ? " · Cadastro provisório" : ""}</p></div><span className={patient.status === "ACTIVE" ? "rounded-full bg-green-50 px-2 py-1 text-xs font-bold text-success" : "rounded-full bg-surface-muted px-2 py-1 text-xs font-bold text-muted-foreground"}>{patient.status === "ACTIVE" ? "Ativo" : "Arquivado"}</span></div>
+      <div className="flex items-start gap-3"><UserAvatar name={patient.fullName} seed={patient.id || patient.email || patient.fullName} size="lg" /><div className="min-w-0 flex-1"><h1 className="truncate text-xl font-bold tracking-tight text-brand-navy">{patient.fullName}</h1><p className="mt-1 text-sm text-muted-foreground">{patient.phone ?? "Sem telefone"}{patient.provisional ? " · Cadastro provisório" : ""}</p></div><span className={patient.status === "ACTIVE" ? "rounded-full bg-green-50 px-2 py-1 text-xs font-bold text-success" : "rounded-full bg-surface-muted px-2 py-1 text-xs font-bold text-muted-foreground"}>{patient.status === "ACTIVE" ? "Ativo" : "Arquivado"}</span></div>
       <div className="mt-5 grid grid-cols-3 gap-2"><Link className="inline-flex min-h-11 flex-col items-center justify-center gap-1 rounded-xl border border-border text-xs font-semibold text-brand-navy hover:bg-surface-muted" href={`/agenda?patientId=${patient.id}`}><CalendarPlus aria-hidden="true" className="h-4 w-4 text-primary" />Agendar</Link><Link className="inline-flex min-h-11 flex-col items-center justify-center gap-1 rounded-xl border border-border text-xs font-semibold text-brand-navy hover:bg-surface-muted" href={`/appointments/start?patientId=${patient.id}`}><ClipboardPenLine aria-hidden="true" className="h-4 w-4 text-primary" />Atendimento</Link><a className="inline-flex min-h-11 flex-col items-center justify-center gap-1 rounded-xl border border-border text-xs font-semibold text-brand-navy hover:bg-surface-muted" href={patient.phone ? `tel:${patient.phone}` : undefined}><Phone aria-hidden="true" className="h-4 w-4 text-primary" />Ligar</a></div>
       <div className="mt-5 grid grid-cols-3 rounded-xl bg-surface-muted p-1" role="tablist" aria-label="Seções do perfil do paciente">{([["summary", "Resumo"], ["history", "Histórico"], ["treatments", "Tratamentos"]] as const).map(([value, label]) => <button aria-selected={tab === value} className={`min-h-10 rounded-lg px-2 text-xs font-semibold transition-colors ${tab === value ? "bg-surface text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"}`} key={value} onClick={() => setTab(value)} role="tab" type="button">{label}</button>)}</div>
     </Card>
