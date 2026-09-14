@@ -85,8 +85,8 @@ jobs:
           VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
           VPS_DEPLOY_PATH_HOMOLOG: ${{ secrets.VPS_DEPLOY_PATH_HOMOLOG }}
           VPS_DEPLOY_PATH_MAIN: ${{ secrets.VPS_DEPLOY_PATH_MAIN }}
-          VPS_GHCR_USERNAME: ${{ secrets.VPS_GHCR_USERNAME }}
-          VPS_GHCR_TOKEN: ${{ secrets.VPS_GHCR_TOKEN }}
+          GITHUB_TOKEN_FOR_VPS: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_ACTOR_FOR_VPS: ${{ github.actor }}
           BACKEND_IMAGE: ghcr.io/${{ env.BACKEND_IMAGE_NAME }}
           FRONTEND_IMAGE: ghcr.io/${{ env.IMAGE_NAME }}
         run: |
@@ -130,11 +130,9 @@ jobs:
           ssh "${ssh_args[@]}" "$remote" "mkdir -p '$deploy_dir'"
           scp "${scp_args[@]}" deploy/docker-compose.yml deploy/Caddyfile.example "$remote:$deploy_dir/"
 
-          if [ -n "$VPS_GHCR_TOKEN" ]; then
-            {
-              printf '%s\n' "$VPS_GHCR_USERNAME"
-              printf '%s\n' "$VPS_GHCR_TOKEN"
-            } | ssh "${ssh_args[@]}" "$remote" 'read -r ghcr_user && read -r ghcr_token && printf "%s" "$ghcr_token" | docker login ghcr.io --username "$ghcr_user" --password-stdin'
-          fi
+          {
+            printf '%s\n' "$GITHUB_ACTOR_FOR_VPS"
+            printf '%s\n' "$GITHUB_TOKEN_FOR_VPS"
+          } | ssh "${ssh_args[@]}" "$remote" 'read -r ghcr_user && read -r ghcr_token && printf "%s" "$ghcr_token" | docker login ghcr.io --username "$ghcr_user" --password-stdin'
 
           ssh "${ssh_args[@]}" "$remote" "cd '$deploy_dir' && test -f .env && CLINI_ENV='$environment_tag' BACKEND_IMAGE='$BACKEND_IMAGE:$environment_tag' FRONTEND_IMAGE='$FRONTEND_IMAGE:$environment_tag' docker compose pull frontend && CLINI_ENV='$environment_tag' BACKEND_IMAGE='$BACKEND_IMAGE:$environment_tag' FRONTEND_IMAGE='$FRONTEND_IMAGE:$environment_tag' docker compose up -d --remove-orphans frontend && docker compose ps"
