@@ -15,8 +15,10 @@ dois ambientes estiverem no mesmo servidor.
 
 Cadastre nos dois repositórios os secrets `VPS_HOST`, `VPS_USER`,
 `VPS_PORT` (opcional), `VPS_SSH_PRIVATE_KEY`, `VPS_KNOWN_HOSTS`,
-`VPS_DEPLOY_PATH_HOMOLOG`, `VPS_DEPLOY_PATH_MAIN`, `VPS_GHCR_USERNAME` e
-`VPS_GHCR_TOKEN`.
+`VPS_DEPLOY_PATH_HOMOLOG` e `VPS_DEPLOY_PATH_MAIN`.
+
+O workflow usa o `GITHUB_TOKEN` temporário para autenticar no GHCR, sem token
+permanente na VPS.
 
 O frontend usa o proxy same-origin `/api/v1`, então o navegador não precisa
 conhecer a porta interna do backend. Para o endereço público da API, use o
