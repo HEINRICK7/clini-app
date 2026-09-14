@@ -7,6 +7,7 @@ import { ArrowLeft, Check, CheckCircle2, Circle, Search } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { ApiError } from "@/lib/api/client";
 import { createClinicalEvolution } from "@/modules/clinical/api";
 import { listCatalogProcedures } from "@/modules/catalog/api";
@@ -65,7 +66,7 @@ export function AppointmentFlowWorkspace() {
 }
 
 function PatientContext({ patient, patients, patientId, onPatientChange }: { patient?: Patient; patients: Patient[]; patientId: string; onPatientChange: (value: string) => void }) {
-  return <Card className="p-4 sm:p-5"><div className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-muted text-sm font-bold text-brand-navy">{patient ? patient.fullName.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase() : <Circle aria-hidden="true" className="h-5 w-5" />}</span><div className="min-w-0 flex-1"><p className="text-xs font-semibold text-muted-foreground">Paciente</p>{patient ? <p className="truncate font-bold text-brand-navy">{patient.fullName}</p> : <label className="relative mt-1 block"><Search aria-hidden="true" className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><select aria-label="Selecionar paciente" className="min-h-10 w-full appearance-none rounded-lg border border-border bg-surface pl-8 pr-2 text-sm font-semibold" onChange={(event) => onPatientChange(event.target.value)} value={patientId}><option value="">Buscar paciente…</option>{patients.map((item) => <option key={item.id} value={item.id}>{item.fullName}</option>)}</select></label>}</div>{patient ? <p className="text-xs text-muted-foreground">{patient.phone ?? "Sem telefone"}</p> : null}</div></Card>;
+  return <Card className="p-4 sm:p-5"><div className="flex items-center gap-3">{patient ? <UserAvatar decorative name={patient.fullName} seed={patient.id || patient.email || patient.fullName} size="md" /> : <span aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface-muted"><Circle className="h-5 w-5 text-muted-foreground" /></span>}<div className="min-w-0 flex-1"><p className="text-xs font-semibold text-muted-foreground">Paciente</p>{patient ? <p className="truncate font-bold text-brand-navy">{patient.fullName}</p> : <label className="relative mt-1 block"><Search aria-hidden="true" className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><select aria-label="Selecionar paciente" className="min-h-10 w-full appearance-none rounded-lg border border-border bg-surface pl-8 pr-2 text-sm font-semibold" onChange={(event) => onPatientChange(event.target.value)} value={patientId}><option value="">Buscar paciente…</option>{patients.map((item) => <option key={item.id} value={item.id}>{item.fullName}</option>)}</select></label>}</div>{patient ? <p className="text-xs text-muted-foreground">{patient.phone ?? "Sem telefone"}</p> : null}</div></Card>;
 }
 
 function ContextStep({ context, onChange }: { context: string; onChange: (value: string) => void }) {
