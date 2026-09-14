@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 import { apiRequest } from "@/lib/api/client";
 
 export type LoginInput = {
@@ -15,6 +17,15 @@ export type AuthSession = {
   capabilities: string[];
 };
 
+const invitationDetailsSchema = z.object({
+  name: z.string().min(1),
+  email: z.string().email(),
+  status: z.literal("PENDING"),
+  expiresAt: z.string().min(1),
+});
+
+export type InvitationDetails = z.infer<typeof invitationDetailsSchema>;
+
 export function login(input: LoginInput) {
   return apiRequest<AuthSession>("/auth/login", {
     method: "POST",
@@ -28,4 +39,18 @@ export function getCurrentSession() {
 
 export function logout() {
   return apiRequest<void>("/auth/logout", { method: "POST" });
+}
+
+export async function getInvitationDetails(token: string): Promise<InvitationDetails> {
+  return invitationDetailsSchema.parse(await apiRequest<unknown>(`/auth/invitations/${encodeURIComponent(token)}`));
+}
+
+export async function activateInvitation(
+  token: string,
+  input: { password: string; confirmPassword: string; termsAccepted: boolean },
+) {
+  return apiRequest<AuthSession>(`/auth/invitations/${encodeURIComponent(token)}/activate`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
 }

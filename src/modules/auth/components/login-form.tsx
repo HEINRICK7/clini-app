@@ -146,10 +146,10 @@ export function LoginForm() {
       </form>
 
       <p className="mt-auto pt-12 text-center text-xs leading-5 text-muted-foreground">
-        Ainda não tem uma conta?{" "}
-        <button className="inline-flex min-h-11 items-center font-semibold text-primary hover:text-primary-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary" onClick={() => router.push("/create-account")} type="button">
-          Criar minha conta
-        </button>
+        Quer usar o Clini?{" "}
+        <a className="inline-flex min-h-11 items-center font-semibold text-primary hover:text-primary-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary" href="mailto:suporte@clini.app">
+          Fale com a nossa equipe
+        </a>
       </p>
     </section>
   );
