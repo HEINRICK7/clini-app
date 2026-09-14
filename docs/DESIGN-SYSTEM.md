@@ -13,6 +13,8 @@ O design system traduz a marca CLINI para uma interface de trabalho rápida, cla
 - `surface-muted`: estados de hover, áreas auxiliares e separação visual.
 - `border`: separação discreta entre áreas.
 - `foreground` e `muted-foreground`: hierarquia de texto.
+- `title-weight`: peso 700 para títulos de página e seção.
+- `subtitle-weight`: peso 500 para o parágrafo imediatamente posterior ao título, usado como subtítulo/contexto.
 
 Os tokens vivem em `src/app/globals.css` e são expostos ao Tailwind. Componentes não devem criar novas cores diretamente sem atualizar esta fonte.
 
@@ -22,7 +24,11 @@ Os tokens vivem em `src/app/globals.css` e são expostos ao Tailwind. Componente
 - `Button`: ações com alvo mínimo de 44px e variantes `primary`, `outline` e `ghost`.
 - `Card`: superfície padrão para conteúdo agrupado.
 - `Badge`: status curto e não interativo.
-- `UserAvatar`: avatar circular determinístico no estilo Boring Avatars, variante `beam`, com seed estável e paleta derivada dos tokens Clini. Todo usuário exibido visualmente deve usar este componente; não usar fotos, iniciais soltas ou ícones genéricos como fallback.
+- `UserAvatar`: wrapper do pacote oficial `boring-avatars`, com variante global `beam`, seed determinística (`id`, e-mail ou nome) e paleta hex derivada dos tokens CLINI. Todo usuário exibido visualmente deve usar este componente; não usar fotos, iniciais soltas ou ícones genéricos como fallback.
+
+### Hierarquia tipográfica
+
+Títulos `h1` e `h2` usam peso 700 e line-height compacto; títulos `h3` usam peso 600. O primeiro parágrafo após qualquer título recebe peso 500 como subtítulo/contexto, salvo quando o componente declara explicitamente outro peso. O corpo de texto continua regular para preservar leitura e contraste de hierarquia.
 
 Novos componentes devem ser adicionados em `src/components/ui` somente quando forem reutilizados por mais de um módulo. Componentes específicos de um domínio ficam no módulo correspondente.
 
