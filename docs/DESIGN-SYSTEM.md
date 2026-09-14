@@ -13,8 +13,9 @@ O design system traduz a marca CLINI para uma interface de trabalho rápida, cla
 - `surface-muted`: estados de hover, áreas auxiliares e separação visual.
 - `border`: separação discreta entre áreas.
 - `foreground` e `muted-foreground`: hierarquia de texto.
-- `title-weight`: peso 700 para títulos de página e seção.
-- `subtitle-weight`: peso 500 para o parágrafo imediatamente posterior ao título, usado como subtítulo/contexto.
+- `title-weight`: peso 800 para títulos de página e seção.
+- `section-title-weight`: peso 700 para títulos menores de conteúdo.
+- `subtitle-weight`: peso 600 para o parágrafo imediatamente posterior ao título, usado como subtítulo/contexto.
 
 Os tokens vivem em `src/app/globals.css` e são expostos ao Tailwind. Componentes não devem criar novas cores diretamente sem atualizar esta fonte.
 
@@ -28,7 +29,7 @@ Os tokens vivem em `src/app/globals.css` e são expostos ao Tailwind. Componente
 
 ### Hierarquia tipográfica
 
-Títulos `h1` e `h2` usam peso 700 e line-height compacto; títulos `h3` usam peso 600. O primeiro parágrafo após qualquer título recebe peso 500 como subtítulo/contexto, salvo quando o componente declara explicitamente outro peso. O corpo de texto continua regular para preservar leitura e contraste de hierarquia.
+Títulos `h1` e `h2` usam peso 800 e line-height compacto; títulos `h3` usam peso 700. O primeiro parágrafo após qualquer título recebe peso 600 como subtítulo/contexto, salvo quando o componente declara explicitamente outro peso. O corpo de texto continua regular para preservar leitura e contraste de hierarquia.
 
 Novos componentes devem ser adicionados em `src/components/ui` somente quando forem reutilizados por mais de um módulo. Componentes específicos de um domínio ficam no módulo correspondente.
 
