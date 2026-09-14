@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { CalendarDays, FileText, Stethoscope, UsersRound } from "lucide-react";
 
 const highlights = [
@@ -10,6 +11,8 @@ const highlights = [
 ];
 
 export function WelcomeScreen() {
+  const router = useRouter();
+
   return (
     <section
       aria-labelledby="welcome-title"
@@ -46,7 +49,7 @@ export function WelcomeScreen() {
         ))}
       </div>
 
-      <button className="mt-7 inline-flex h-[52px] min-h-0 w-full items-center justify-center rounded-xl bg-primary px-4 text-center text-sm font-semibold text-primary-foreground shadow-none transition-colors hover:bg-primary-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary" type="button">
+      <button className="mt-7 inline-flex h-[52px] min-h-0 w-full items-center justify-center rounded-xl bg-primary px-4 text-center text-sm font-semibold text-primary-foreground shadow-none transition-colors hover:bg-primary-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary" onClick={() => router.push("/more?section=units")} type="button">
         Configurar meu primeiro consultório
       </button>
     </section>
