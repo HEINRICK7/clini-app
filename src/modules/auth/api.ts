@@ -45,9 +45,21 @@ export type CommercialLeadInput = {
   name: string;
   email: string;
   whatsapp: string;
-  city?: string;
-  message?: string;
+  city?: string | undefined;
+  message?: string | undefined;
 };
+
+export const commercialLeadInputSchema = z.object({
+  name: z.string({ error: "Informe seu nome completo." }).trim().min(1, "Informe seu nome completo.").max(180),
+  email: z.string({ error: "Informe um e-mail válido." }).trim().email("Informe um e-mail válido.").max(254),
+  whatsapp: z.string({ error: "Informe seu WhatsApp com DDD." }).trim().min(1, "Informe seu WhatsApp com DDD.").max(32)
+    .refine((value) => {
+      const digits = value.replace(/\D/g, "");
+      return digits.length >= 10 && digits.length <= 15;
+    }, "Informe um WhatsApp válido com DDD."),
+  city: z.string().trim().max(120).optional(),
+  message: z.string().trim().max(2000).optional(),
+});
 
 const commercialLeadResponseSchema = z.object({
   id: z.string().uuid(),
@@ -55,9 +67,10 @@ const commercialLeadResponseSchema = z.object({
 });
 
 export async function submitCommercialLead(input: CommercialLeadInput) {
+  const validatedInput = commercialLeadInputSchema.parse(input);
   return commercialLeadResponseSchema.parse(await apiRequest<unknown>("/public/commercial-leads", {
     method: "POST",
-    body: JSON.stringify(input),
+    body: JSON.stringify(validatedInput),
   }));
 }
 
@@ -69,8 +82,18 @@ export async function activateInvitation(
   token: string,
   input: { password: string; confirmPassword: string; termsAccepted: boolean },
 ) {
+  const validatedInput = activateInvitationInputSchema.parse(input);
   return apiRequest<AuthSession>(`/auth/invitations/${encodeURIComponent(token)}/activate`, {
     method: "POST",
-    body: JSON.stringify(input),
+    body: JSON.stringify(validatedInput),
   });
 }
+
+export const activateInvitationInputSchema = z.object({
+  password: z.string().min(8, "A senha deve ter pelo menos 8 caracteres.").max(128),
+  confirmPassword: z.string().min(8, "A confirmação deve ter pelo menos 8 caracteres.").max(128),
+  termsAccepted: z.literal(true, { error: "Aceite os termos para continuar." }),
+}).refine((input) => input.password === input.confirmPassword, {
+  message: "As senhas precisam ser iguais.",
+  path: ["confirmPassword"],
+});

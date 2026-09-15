@@ -45,7 +45,9 @@ export function ActivationScreen({ token }: Readonly<{ token: string }>) {
 
   const invitation = invitationQuery.data;
   const validityHours = Math.max(1, Math.ceil((new Date(invitation.expiresAt).getTime() - loadedAt) / 3_600_000));
-  const canSubmit = password.length >= 8 && confirmPassword.length >= 8 && termsAccepted && !activateMutation.isPending;
+  const passwordsMatch = password === confirmPassword;
+  const hasPasswordMismatch = confirmPassword.length > 0 && !passwordsMatch;
+  const canSubmit = password.length >= 8 && confirmPassword.length >= 8 && passwordsMatch && termsAccepted && !activateMutation.isPending;
 
   return (
     <section aria-labelledby="activation-title" className="flex min-h-[100dvh] w-full max-w-3xl flex-col bg-surface px-5 pb-[calc(env(safe-area-inset-bottom)+2rem)] pt-[calc(env(safe-area-inset-top)+2rem)] sm:px-10 lg:px-12">
@@ -73,7 +75,10 @@ export function ActivationScreen({ token }: Readonly<{ token: string }>) {
       <form className="mt-10 grid min-w-0 grid-cols-1 gap-7" onSubmit={submit}>
         <ReadonlyField email={invitation.email} />
         <PasswordField id="activation-password" label="Crie sua senha" onChange={setPassword} onToggle={() => setShowPassword((current) => !current)} showPassword={showPassword} value={password} />
-        <PasswordField id="activation-confirm-password" label="Confirmar senha" onChange={setConfirmPassword} onToggle={() => setShowConfirmation((current) => !current)} showPassword={showConfirmation} value={confirmPassword} />
+        <div>
+          <PasswordField id="activation-confirm-password" label="Confirmar senha" onChange={setConfirmPassword} onToggle={() => setShowConfirmation((current) => !current)} showPassword={showConfirmation} value={confirmPassword} />
+          {hasPasswordMismatch ? <p className="mt-2 text-sm font-semibold text-danger" id="activation-password-mismatch">As senhas precisam ser iguais.</p> : null}
+        </div>
 
         <label className="flex cursor-pointer items-center gap-5 text-lg text-slate-600 sm:text-2xl">
           <input aria-label="Aceitar os termos" checked={termsAccepted} className="h-12 w-12 shrink-0 cursor-pointer rounded-xl border-4 border-slate-400 accent-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary" onChange={(event) => setTermsAccepted(event.target.checked)} type="checkbox" />

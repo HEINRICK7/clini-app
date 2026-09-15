@@ -64,9 +64,6 @@ jobs:
         run: |
           set -euo pipefail
           test_login=false
-          if [ "$GITHUB_REF_NAME" = "homolog" ]; then
-            test_login=true
-          fi
           docker build \
             --build-arg NEXT_PUBLIC_API_BASE_URL=/api/v1 \
             --build-arg CLINI_INTERNAL_API_URL=http://backend:8080 \

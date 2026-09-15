@@ -7,15 +7,13 @@ import { ArrowLeft, CheckCircle2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { ApiError } from "@/lib/api/client";
-import { submitCommercialLead } from "@/modules/auth/api";
+import { commercialLeadInputSchema, submitCommercialLead } from "@/modules/auth/api";
 
 export function InterestForm() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
-  const [city, setCity] = useState("");
-  const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -23,9 +21,16 @@ export function InterestForm() {
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setErrorMessage(null);
+
+    const input = commercialLeadInputSchema.safeParse({ name, email, whatsapp });
+    if (!input.success) {
+      setErrorMessage(input.error.issues[0]?.message ?? "Confira seus dados e tente novamente.");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      await submitCommercialLead({ name, email, whatsapp, city: city || undefined, message: message || undefined });
+      await submitCommercialLead(input.data);
       setSubmitted(true);
     } catch (error) {
       setErrorMessage(error instanceof ApiError ? error.message : "Não foi possível enviar seus dados agora. Tente novamente.");
@@ -58,14 +63,14 @@ export function InterestForm() {
             <CheckCircle2 aria-hidden="true" className="h-11 w-11" strokeWidth={1.8} />
           </div>
           <h1 className="mt-7 text-2xl font-extrabold leading-[1.15] tracking-tight text-brand-navy" id="interest-title">Recebemos seus dados</h1>
-          <p className="mt-3 max-w-xs text-sm leading-6 text-muted-foreground">Nossa equipe vai falar com você pelo WhatsApp para apresentar o Clini e combinar os próximos passos.</p>
+          <p className="mt-3 max-w-xs text-sm leading-6 text-muted-foreground">Nossa equipe vai falar com você pelo WhatsApp. Quando seu convite estiver pronto, você receberá um link seguro para criar sua senha e ativar o acesso.</p>
           <Button className="mt-8 h-[52px] min-h-0 w-full rounded-xl" onClick={() => router.replace("/login")}>Voltar para o login</Button>
         </div>
       ) : (
         <>
           <header className="mt-8">
             <h1 className="text-2xl font-extrabold leading-[1.15] tracking-tight text-brand-navy" id="interest-title">Quero conhecer o Clini</h1>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">Envie seus dados. Nossa equipe conversa com você antes de criar qualquer acesso.</p>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">Deixe seus dados de contato. É rapidinho e não cria uma conta agora.</p>
           </header>
 
           <form className="mt-8 grid gap-5" onSubmit={handleSubmit}>
@@ -77,12 +82,6 @@ export function InterestForm() {
             </label>
             <label className="grid gap-2 text-sm font-extrabold text-brand-navy" htmlFor="interest-whatsapp">WhatsApp
               <input autoComplete="tel" className="h-[52px] w-full rounded-xl border border-border bg-surface px-4 text-base font-normal text-foreground outline-none transition placeholder:text-slate-300 focus:border-primary focus:ring-4 focus:ring-primary/10" id="interest-whatsapp" inputMode="tel" onChange={(event) => setWhatsapp(event.target.value)} placeholder="(86) 99999-9999" required value={whatsapp} />
-            </label>
-            <label className="grid gap-2 text-sm font-extrabold text-brand-navy" htmlFor="interest-city">Cidade <span className="font-semibold text-muted-foreground">(opcional)</span>
-              <input autoComplete="address-level2" className="h-[52px] w-full rounded-xl border border-border bg-surface px-4 text-base font-normal text-foreground outline-none transition placeholder:text-slate-300 focus:border-primary focus:ring-4 focus:ring-primary/10" id="interest-city" onChange={(event) => setCity(event.target.value)} placeholder="Piripiri - PI" value={city} />
-            </label>
-            <label className="grid gap-2 text-sm font-extrabold text-brand-navy" htmlFor="interest-message">Como podemos ajudar? <span className="font-semibold text-muted-foreground">(opcional)</span>
-              <textarea className="min-h-24 w-full resize-y rounded-xl border border-border bg-surface px-4 py-3 text-base font-normal text-foreground outline-none transition placeholder:text-slate-300 focus:border-primary focus:ring-4 focus:ring-primary/10" id="interest-message" onChange={(event) => setMessage(event.target.value)} placeholder="Conte um pouco sobre seu consultório..." value={message} />
             </label>
             {errorMessage ? <p aria-live="polite" className="rounded-xl border border-danger/30 bg-danger/10 px-4 py-3 text-sm leading-5 text-danger" role="alert">{errorMessage}</p> : null}
             <Button className="h-[52px] min-h-0 w-full rounded-xl" disabled={isSubmitting} type="submit">{isSubmitting ? "Enviando…" : "Enviar meus dados"}</Button>
