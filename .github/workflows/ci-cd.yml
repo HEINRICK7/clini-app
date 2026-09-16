@@ -28,6 +28,7 @@ jobs:
   test:
     name: Test frontend
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -61,6 +62,7 @@ jobs:
     if: github.ref_name == 'homolog' || (github.ref_name == 'main' && github.event_name == 'workflow_dispatch' && inputs.confirm_production == true)
     environment: ${{ github.ref_name == 'main' && 'production' || 'homolog' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v4
