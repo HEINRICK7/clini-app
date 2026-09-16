@@ -30,7 +30,7 @@ const sizePixels = {
  * a API `seed` existe para que os consumidores prefiram id e mantenham o nome visível.
  */
 export function UserAvatar({ name, seed, size = "md", decorative = false }: UserAvatarProps) {
-  const avatarSeed = seed?.trim() || name.trim() || "clini-user";
+  const avatarSeed = seed?.trim().toLowerCase() || name.trim().toLowerCase() || "clini-user";
   const label = `${name || "Usuário"} — avatar`;
 
   return (

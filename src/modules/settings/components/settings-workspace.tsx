@@ -27,7 +27,7 @@ export function SettingsWorkspace() {
     <Card className="overflow-hidden p-0">
       <div className="border-b border-border px-5 py-6 sm:px-6">
         <div className="flex items-center gap-3">
-          <UserAvatar name={session.name} seed={session.userId || session.email} size="lg" />
+          <UserAvatar name={session.name} seed={session.email} size="lg" />
           <div className="min-w-0"><h2 className="truncate text-lg font-bold text-brand-navy">{session.name}</h2><p className="mt-0.5 text-sm text-muted-foreground">Dentista · Proprietário</p></div>
         </div>
       </div>
