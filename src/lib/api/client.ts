@@ -84,11 +84,12 @@ export async function apiRequest<T>(
     );
   }
 
-  if (response.status === 204) {
+  const body = await response.text();
+  if (!body.trim()) {
     return undefined as T;
   }
 
-  return response.json() as Promise<T>;
+  return JSON.parse(body) as T;
 }
 
 export async function apiDownload(path: string, accept = "application/octet-stream"): Promise<Blob> {

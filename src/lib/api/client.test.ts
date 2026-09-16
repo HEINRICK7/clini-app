@@ -9,11 +9,29 @@ function jsonResponse(body: unknown, status = 200, headers: Record<string, strin
   });
 }
 
+function emptyResponse(status: number) {
+  return new Response(null, { status });
+}
+
 afterEach(() => {
   vi.unstubAllGlobals();
 });
 
 describe("apiRequest", () => {
+  it.each([204, 200, 202])("accepts a successful %s response without a body", async (status) => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(emptyResponse(status));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(apiRequest<void>("/auth/me")).resolves.toBeUndefined();
+  });
+
+  it("parses JSON bodies for any successful status", async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse({ accepted: true }, 202));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(apiRequest<{ accepted: boolean }>("/auth/me")).resolves.toEqual({ accepted: true });
+  });
+
   it("sends authenticated safe requests with a request id and no CSRF round trip", async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse({ ok: true }));
     vi.stubGlobal("fetch", fetchMock);
