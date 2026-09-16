@@ -11,31 +11,7 @@ import { useCurrentUnit } from "@/modules/auth/components/auth-gate";
 import { listPatients } from "@/modules/patient/api";
 import { listUnits } from "@/modules/practice/api";
 import { cancelAppointment, createAppointment, createScheduleBlock, listAgenda, listAvailability, replaceAvailability, type Appointment } from "@/modules/scheduling/api";
-
-function localDate() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-}
-
-function instant(date: string, time: string) {
-  return new Date(`${date}T${time}:00`).toISOString();
-}
-
-function nextDate(date: string) {
-  const value = new Date(`${date}T00:00:00`);
-  value.setDate(value.getDate() + 1);
-  return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
-}
-
-function addDays(date: string, amount: number) {
-  const value = new Date(`${date}T00:00:00`);
-  value.setDate(value.getDate() + amount);
-  return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
-}
-
-function displayTime(value: string) {
-  return new Date(value).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-}
+import { addDays, displayTime, formatRangeLabel, instant, localDate, rangeEnd, type AgendaView } from "@/modules/scheduling/application/calendar-rules";
 
 const weekdayLabels = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"];
 const defaultAvailability = weekdayLabels.map((_, index) => ({ dayOfWeek: index + 1, startsAt: "08:00", endsAt: "18:00", enabled: false }));
@@ -45,7 +21,7 @@ export function AgendaWorkspace() {
   const { selectedUnitId } = useCurrentUnit();
   const [date, setDate] = useState(localDate);
   const [unitId, setUnitId] = useState(selectedUnitId ?? "");
-  const [view, setView] = useState<"day" | "week" | "month">("day");
+  const [view, setView] = useState<AgendaView>("day");
   const [showComposer, setShowComposer] = useState(false);
   const [patientId, setPatientId] = useState("");
   const [start, setStart] = useState("09:00");
@@ -64,10 +40,10 @@ export function AgendaWorkspace() {
   const [availabilityOverrides, setAvailabilityOverrides] = useState<typeof defaultAvailability | null>(null);
   const availability = availabilityOverrides ?? serverAvailability;
   const activeUnits = useMemo(() => (unitsQuery.data ?? []).filter((unit) => unit.status === "ACTIVE"), [unitsQuery.data]);
-  const rangeEnd = view === "day" ? nextDate(date) : addDays(date, view === "week" ? 7 : 30);
+  const periodEnd = rangeEnd(date, view);
   const agendaQuery = useQuery({
-    queryKey: ["agenda", date, rangeEnd, unitId],
-    queryFn: () => listAgenda(instant(date, "00:00"), instant(rangeEnd, "00:00"), unitId || undefined),
+    queryKey: ["agenda", date, periodEnd, unitId],
+    queryFn: () => listAgenda(instant(date, "00:00"), instant(periodEnd, "00:00"), unitId || undefined),
     retry: false,
   });
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["agenda"] });
@@ -150,13 +126,6 @@ function AgendaSelect({ label, value, onChange, options }: { label: string; valu
 
 function AgendaField({ label, type = "text", value, onChange }: { label: string; type?: string; value: string; onChange: (value: string) => void }) {
   return <label className="grid gap-1.5 text-sm font-semibold"><span>{label}</span><input className="min-h-12 rounded-xl border border-border bg-surface px-4 text-base font-normal outline-none focus:border-primary focus:ring-4 focus:ring-cyan-100" onChange={(event) => onChange(event.target.value)} type={type} value={value} /></label>;
-}
-
-function formatRangeLabel(date: string, view: "day" | "week" | "month") {
-  const start = new Date(`${date}T12:00:00`);
-  if (view === "day") return start.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" });
-  const end = new Date(`${addDays(date, view === "week" ? 6 : 29)}T12:00:00`);
-  return `${start.toLocaleDateString("pt-BR", { day: "numeric", month: "short" })} – ${end.toLocaleDateString("pt-BR", { day: "numeric", month: "short" })}`;
 }
 
 function currentUnitLabel(units: { id: string; name: string }[], unitId: string) {
