@@ -9,9 +9,7 @@ on:
         required: true
         type: boolean
   pull_request:
-    branches: [homolog, main]
   push:
-    branches: [homolog, main]
 
 permissions:
   contents: read
