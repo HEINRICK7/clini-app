@@ -7,12 +7,12 @@ import { useEffect } from "react";
 import { OperationalShell } from "@/app/operational-shell";
 import { SplashScreen } from "@/components/brand/splash-screen";
 import { ApiError } from "@/lib/api/client";
-import { getCurrentSession } from "@/modules/auth/api";
+import { authGateway } from "@/modules/auth/infrastructure/auth-gateway";
 import { DashboardWorkspace } from "@/modules/dashboard/components/dashboard-workspace";
 
 export default function Home() {
   const router = useRouter();
-  const sessionQuery = useQuery({ queryKey: ["auth-session"], queryFn: getCurrentSession, retry: false });
+  const sessionQuery = useQuery({ queryKey: ["auth-session"], queryFn: authGateway.getCurrentSession, retry: false });
   const isUnauthorized = sessionQuery.error instanceof ApiError && sessionQuery.error.status === 401;
 
   useEffect(() => {

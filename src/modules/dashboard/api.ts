@@ -1,6 +1,9 @@
 import { z } from "zod";
 
 import { apiRequest } from "@/lib/api/client";
+import type { DashboardOverview } from "./application/contracts";
+
+export type { DashboardOverview } from "./application/contracts";
 
 const appointmentSchema = z.object({
   id: z.string().uuid(),
@@ -29,8 +32,6 @@ const overviewSchema = z.object({
     totalItems: z.number().int(),
   }),
 });
-
-export type DashboardOverview = z.infer<typeof overviewSchema>;
 
 export async function getDashboardOverview(input: { unitId?: string; date: string } ): Promise<DashboardOverview> {
   const params = new URLSearchParams({ date: input.date });
