@@ -1,4 +1,5 @@
 name: Clini frontend CI/CD
+run-name: Clini frontend CI/CD · ${{ github.ref_name }} · ${{ github.sha }}
 
 on:
   workflow_dispatch:
