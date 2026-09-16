@@ -138,7 +138,7 @@ export function LoginForm() {
 
         <button
           className="block min-h-11 w-full text-center text-sm font-semibold text-primary hover:text-primary-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-          onClick={() => setErrorMessage("Para redefinir sua senha, entre em contato com o administrador.")}
+          onClick={() => router.push(`/redefinir-senha?email=${encodeURIComponent(email)}`)}
           type="button"
         >
           Esqueci minha senha

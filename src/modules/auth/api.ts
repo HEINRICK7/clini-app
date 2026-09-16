@@ -41,6 +41,20 @@ export function logout() {
   return apiRequest<void>("/auth/logout", { method: "POST" });
 }
 
+export function requestPasswordReset(email: string) {
+  return apiRequest<void>("/auth/password-reset/request", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+}
+
+export function resetPassword(input: { token: string; password: string; confirmPassword: string }) {
+  return apiRequest<void>("/auth/password-reset/reset", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
 export type CommercialLeadInput = {
   name: string;
   email: string;
