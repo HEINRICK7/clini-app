@@ -2,6 +2,11 @@ name: Clini frontend CI/CD
 
 on:
   workflow_dispatch:
+    inputs:
+      confirm_production:
+        description: "Confirma o deploy manual para produção"
+        required: true
+        type: boolean
   pull_request:
     branches: [homolog, main]
   push:
@@ -11,6 +16,10 @@ permissions:
   contents: read
   packages: write
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 env:
   IMAGE_NAME: heinrick7/clini-app
   BACKEND_IMAGE_NAME: heinrick7/clini-backend
@@ -19,6 +28,7 @@ jobs:
   test:
     name: Test frontend
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -49,8 +59,10 @@ jobs:
   deploy:
     name: Build and deploy frontend
     needs: test
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    if: github.ref_name == 'homolog' || (github.ref_name == 'main' && github.event_name == 'workflow_dispatch' && inputs.confirm_production == true)
+    environment: ${{ github.ref_name == 'main' && 'production' || 'homolog' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v4
