@@ -7,13 +7,13 @@ import { ArrowLeft, ArrowRight, Eye, EyeOff, LoaderCircle } from "lucide-react";
 import { useState } from "react";
 
 import { ApiError } from "@/lib/api/client";
-import { activateInvitation, getInvitationDetails } from "@/modules/auth/api";
+import { authGateway } from "@/modules/auth/infrastructure/auth-gateway";
 
 export function ActivationScreen({ token }: Readonly<{ token: string }>) {
   const router = useRouter();
   const invitationQuery = useQuery({
     queryKey: ["owner-invitation", token],
-    queryFn: () => getInvitationDetails(token),
+    queryFn: () => authGateway.getInvitationDetails(token),
     retry: false,
   });
   const [password, setPassword] = useState("");
@@ -23,7 +23,7 @@ export function ActivationScreen({ token }: Readonly<{ token: string }>) {
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [loadedAt] = useState(() => Date.now());
   const activateMutation = useMutation({
-    mutationFn: () => activateInvitation(token, { password, confirmPassword, termsAccepted }),
+    mutationFn: () => authGateway.activateInvitation(token, { password, confirmPassword, termsAccepted }),
     onSuccess: () => {
       router.replace("/welcome");
       router.refresh();

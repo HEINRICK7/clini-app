@@ -9,7 +9,8 @@ import { Bell, LogOut } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { ApiError } from "@/lib/api/client";
-import { getCurrentSession, logout, type AuthSession } from "@/modules/auth/api";
+import type { AuthSession } from "@/modules/auth/application/contracts";
+import { authGateway } from "@/modules/auth/infrastructure/auth-gateway";
 
 const AuthContext = createContext<AuthSession | null>(null);
 type CurrentUnitContextValue = {
@@ -20,7 +21,7 @@ const CurrentUnitContext = createContext<CurrentUnitContextValue | null>(null);
 
 export function AuthGate({ children }: Readonly<{ children: ReactNode }>) {
   const router = useRouter();
-  const sessionQuery = useQuery({ queryKey: ["auth-session"], queryFn: getCurrentSession, retry: false });
+  const sessionQuery = useQuery({ queryKey: ["auth-session"], queryFn: authGateway.getCurrentSession, retry: false });
   useEffect(() => {
     if (sessionQuery.error instanceof ApiError && sessionQuery.error.status === 401) router.replace("/login");
   }, [router, sessionQuery.error]);
@@ -70,6 +71,6 @@ export function useCurrentUnit() {
 export function SessionHeader() {
   const router = useRouter();
   const session = useAuthSession();
-  const logoutMutation = useMutation({ mutationFn: logout, onSuccess: () => { router.replace("/login"); router.refresh(); } });
+  const logoutMutation = useMutation({ mutationFn: authGateway.logout, onSuccess: () => { router.replace("/login"); router.refresh(); } });
   return <div className="flex items-center gap-2"><Link aria-label="Abrir notificações" className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full text-brand-navy transition-colors hover:bg-surface-muted" href="/more"><Bell aria-hidden="true" className="h-5 w-5" /></Link><UserAvatar name={session.name} seed={session.email} size="sm" /><button aria-label="Sair da conta" className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-xl text-xs font-semibold text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground disabled:opacity-60 sm:min-w-0 sm:px-3" disabled={logoutMutation.isPending} onClick={() => logoutMutation.mutate()} type="button"><LogOut aria-hidden="true" className="h-4 w-4" /><span className="hidden sm:inline">{logoutMutation.isPending ? "Saindo…" : "Sair"}</span></button></div>;
 }

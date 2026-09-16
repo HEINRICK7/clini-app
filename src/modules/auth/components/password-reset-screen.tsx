@@ -7,12 +7,13 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { ApiError } from "@/lib/api/client";
-import { requestPasswordReset, resetPassword } from "@/modules/auth/api";
+import { canSubmitNewPassword } from "@/modules/auth/application/password-reset";
+import { authGateway } from "@/modules/auth/infrastructure/auth-gateway";
 
 export function PasswordResetRequestScreen() {
   const router = useRouter();
   const [email, setEmail] = useState("");
-  const mutation = useMutation({ mutationFn: () => requestPasswordReset(email) });
+  const mutation = useMutation({ mutationFn: () => authGateway.requestPasswordReset(email) });
 
   if (mutation.isSuccess) {
     return <MessageState title="Confira seu e-mail" message="Se houver uma conta Clini com este e-mail, enviaremos um link seguro para redefinir sua senha." onBack={() => router.replace("/login")} />;
@@ -33,15 +34,15 @@ export function PasswordResetScreen({ token }: Readonly<{ token: string }>) {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
-  const mutation = useMutation({ mutationFn: () => resetPassword({ token, password, confirmPassword }), onSuccess: () => router.replace("/login") });
-  const mismatch = confirmPassword.length > 0 && password !== confirmPassword;
+  const mutation = useMutation({ mutationFn: () => authGateway.resetPassword({ token, password, confirmPassword }), onSuccess: () => router.replace("/login") });
+  const mismatch = confirmPassword.length > 0 && !canSubmitNewPassword(password, confirmPassword) && password !== confirmPassword;
 
   return <AuthFrame title="Crie uma nova senha" subtitle="Escolha uma senha com pelo menos 8 caracteres." onBack={() => router.replace("/login")}>
     <form className="mt-8 grid gap-6" onSubmit={(event) => { event.preventDefault(); mutation.mutate(); }}>
       <PasswordField id="new-password" label="Nova senha" value={password} show={showPassword} onChange={setPassword} onToggle={() => setShowPassword((value) => !value)} />
       <div><PasswordField id="confirm-password" label="Confirmar senha" value={confirmPassword} show={showConfirmation} onChange={setConfirmPassword} onToggle={() => setShowConfirmation((value) => !value)} />{mismatch ? <p className="mt-2 text-sm font-semibold text-danger">As senhas precisam ser iguais.</p> : null}</div>
       {mutation.isError ? <ErrorMessage error={mutation.error} /> : null}
-      <button className="inline-flex h-[52px] items-center justify-center gap-2 rounded-xl bg-primary px-4 font-semibold text-primary-foreground hover:bg-primary-strong disabled:opacity-50" disabled={mutation.isPending || password.length < 8 || confirmPassword.length < 8 || mismatch} type="submit">{mutation.isPending ? <LoaderCircle className="h-5 w-5 animate-spin" /> : null}{mutation.isPending ? "Salvando…" : "Salvar nova senha"}<ArrowRight className="h-5 w-5" /></button>
+      <button className="inline-flex h-[52px] items-center justify-center gap-2 rounded-xl bg-primary px-4 font-semibold text-primary-foreground hover:bg-primary-strong disabled:opacity-50" disabled={mutation.isPending || !canSubmitNewPassword(password, confirmPassword)} type="submit">{mutation.isPending ? <LoaderCircle className="h-5 w-5 animate-spin" /> : null}{mutation.isPending ? "Salvando…" : "Salvar nova senha"}<ArrowRight className="h-5 w-5" /></button>
     </form>
   </AuthFrame>;
 }

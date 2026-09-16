@@ -7,7 +7,8 @@ import { ArrowLeft, Eye, EyeOff } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { ApiError } from "@/lib/api/client";
-import { login } from "@/modules/auth/api";
+import { authenticate, destinationAfterLogin } from "@/modules/auth/application/authentication";
+import { authGateway } from "@/modules/auth/infrastructure/auth-gateway";
 
 export function LoginForm() {
   const router = useRouter();
@@ -23,8 +24,8 @@ export function LoginForm() {
     setIsSubmitting(true);
 
     try {
-      const session = await login({ email, password });
-      router.push(session.units.filter((unit) => unit.status === "ACTIVE").length > 1 ? "/select-unit" : "/");
+      const session = await authenticate(authGateway, { email, password });
+      router.push(destinationAfterLogin(session));
       router.refresh();
     } catch (error) {
       setErrorMessage(

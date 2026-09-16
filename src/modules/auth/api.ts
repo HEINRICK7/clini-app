@@ -1,21 +1,9 @@
 import { z } from "zod";
 
 import { apiRequest } from "@/lib/api/client";
+import type { AuthSession, InvitationDetails, LoginInput } from "./application/contracts";
 
-export type LoginInput = {
-  email: string;
-  password: string;
-};
-
-export type AuthSession = {
-  userId: string;
-  email: string;
-  name: string;
-  role: "OWNER";
-  tenantId: string;
-  units: Array<{ id: string; name: string; status: "ACTIVE" | "INACTIVE"; primary: boolean; timezone: string }>;
-  capabilities: string[];
-};
+export type { AuthSession, InvitationDetails, LoginInput } from "./application/contracts";
 
 const invitationDetailsSchema = z.object({
   name: z.string().min(1),
@@ -23,8 +11,6 @@ const invitationDetailsSchema = z.object({
   status: z.literal("PENDING"),
   expiresAt: z.string().min(1),
 });
-
-export type InvitationDetails = z.infer<typeof invitationDetailsSchema>;
 
 export function login(input: LoginInput) {
   return apiRequest<AuthSession>("/auth/login", {
