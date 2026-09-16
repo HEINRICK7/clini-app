@@ -3,6 +3,7 @@ name: clini-${CLINI_ENV:-homolog}
 services:
   postgres:
     image: postgres:17-alpine
+    restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-clini}
       POSTGRES_USER: ${POSTGRES_USER:-clini}
@@ -17,6 +18,7 @@ services:
 
   redis:
     image: redis:7-alpine
+    restart: unless-stopped
     command: redis-server --appendonly yes
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
@@ -28,6 +30,7 @@ services:
 
   backend:
     image: ${BACKEND_IMAGE:?BACKEND_IMAGE must be set by the deploy workflow}
+    restart: unless-stopped
     environment:
       SPRING_PROFILES_ACTIVE: docker
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-clini}
@@ -79,6 +82,7 @@ services:
 
   frontend:
     image: ${FRONTEND_IMAGE:?FRONTEND_IMAGE must be set by the deploy workflow}
+    restart: unless-stopped
     environment:
       NEXT_PUBLIC_API_BASE_URL: /api/v1
       CLINI_INTERNAL_API_URL: http://backend:8080

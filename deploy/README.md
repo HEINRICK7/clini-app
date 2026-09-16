@@ -4,7 +4,11 @@ O workflow publica `ghcr.io/heinrick7/clini-app` e, após os testes, atualiza
 somente o serviço `frontend` do Compose no ambiente correspondente.
 
 - Push em `homolog`: deploy de homologação sem credenciais de teste embutidas.
-- Push em `main`: deploy de produção sem credenciais de teste.
+- Push em `main`: validação sem deploy automático.
+
+O deploy de produção exige o workflow manual com `confirm_production=true`, usa
+a imagem do SHA do commit e aguarda o health-check; se o frontend falhar,
+tenta restaurar a imagem anterior.
 
 O Compose inclui o backend e as dependências para que a primeira publicação do
 frontend possa iniciar o stack. O backend deve ser publicado primeiro na VPS.
