@@ -10,6 +10,9 @@ O deploy de produção exige o workflow manual com `confirm_production=true`, us
 a imagem do SHA do commit e aguarda o health-check; se o frontend falhar,
 tenta restaurar a imagem anterior.
 
+Execuções do mesmo ambiente são serializadas pelo GitHub Actions para impedir
+dois rollouts concorrentes.
+
 O Compose inclui o backend e as dependências para que a primeira publicação do
 frontend possa iniciar o stack. O backend deve ser publicado primeiro na VPS.
 
