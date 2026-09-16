@@ -1,0 +1,21 @@
+name: Clini frontend push
+
+on:
+  push:
+    branches: [homolog, main]
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: clini-frontend-push-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  pipeline:
+    name: Validate and release frontend push
+    uses: ./.github/workflows/ci-cd.yml
+    with:
+      confirm_production: false
+    secrets: inherit

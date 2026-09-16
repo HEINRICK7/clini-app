@@ -9,7 +9,12 @@ on:
         required: true
         type: boolean
   pull_request:
-  push:
+  workflow_call:
+    inputs:
+      confirm_production:
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -58,7 +63,7 @@ jobs:
   deploy:
     name: Build and deploy frontend
     needs: test
-    if: github.ref_name == 'homolog' || (github.ref_name == 'main' && github.event_name == 'workflow_dispatch' && inputs.confirm_production == true)
+    if: github.ref_name == 'homolog' || (github.ref_name == 'main' && inputs.confirm_production == true)
     environment: ${{ github.ref_name == 'main' && 'production' || 'homolog' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
