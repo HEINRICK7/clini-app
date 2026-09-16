@@ -14,7 +14,7 @@ Todas as telas operacionais exigem sessão `OWNER`. A navegação foi construíd
 
 | Tela | Rota | O que o dentista consegue fazer |
 |---|---|---|
-| Login | `/login` | Entrar com e-mail e senha; no ambiente local, preencher automaticamente o acesso de teste quando `NEXT_PUBLIC_ENABLE_TEST_LOGIN=true`. |
+| Login | `/login` | Entrar com e-mail e senha; não há credenciais de teste embutidas no navegador. |
 | Início / Dashboard | `/` | Ver pacientes ativos, atendimentos do dia, receitas liquidadas, saldo financeiro e próximos atendimentos; filtrar a visão por `Unit` ou consultar todas. |
 | Agenda | `/agenda` | Criar atendimentos, criar bloqueios com ou sem `Unit`, configurar horários semanais, consultar compromissos do dia, cancelar atendimentos e autorizar encaixes quando houver conflito. |
 | Pacientes | `/patients` | Cadastrar paciente, buscar, navegar por páginas, receber alerta de possível duplicidade, transferir entre `Units`, arquivar e exportar os dados. |

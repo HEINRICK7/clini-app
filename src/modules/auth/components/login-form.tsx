@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Eye, EyeOff } from "lucide-react";
 
@@ -9,31 +9,13 @@ import { Button } from "@/components/ui/button";
 import { ApiError } from "@/lib/api/client";
 import { login } from "@/modules/auth/api";
 
-const testLoginEnabled = process.env.NEXT_PUBLIC_ENABLE_TEST_LOGIN === "true";
-const testEmail = "teste@clini.local";
-const testPassword = "CliniTeste@2026!";
-
 export function LoginForm() {
   const router = useRouter();
-  const [email, setEmail] = useState(testLoginEnabled ? testEmail : "");
-  const [password, setPassword] = useState(testLoginEnabled ? testPassword : "");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!testLoginEnabled) return;
-    function handleShortcut(event: KeyboardEvent) {
-      if (event.altKey && event.key.toLowerCase() === "t") {
-        event.preventDefault();
-        setEmail(testEmail);
-        setPassword(testPassword);
-        setErrorMessage(null);
-      }
-    }
-    window.addEventListener("keydown", handleShortcut);
-    return () => window.removeEventListener("keydown", handleShortcut);
-  }, []);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();

@@ -1,11 +1,14 @@
 import { expect, test } from "@playwright/test";
 
 test("OWNER entra pela interface e chega ao dashboard do dentista", async ({ page }) => {
+  const email = process.env.CLINI_E2E_EMAIL;
+  const password = process.env.CLINI_E2E_PASSWORD;
+  test.skip(!email || !password, "Defina CLINI_E2E_EMAIL e CLINI_E2E_PASSWORD para executar o fluxo autenticado.");
+
   await page.goto("/login");
   await expect(page.getByRole("heading", { name: "Bem-vinda de volta" })).toBeVisible();
-  await page.keyboard.press("Alt+t");
-  await expect(page.getByLabel("Email")).toHaveValue("teste@clini.local");
-  await expect(page.getByRole("textbox", { name: "Senha" })).toHaveValue("CliniTeste@2026!");
+  await page.getByLabel("Email").fill(email!);
+  await page.getByRole("textbox", { name: "Senha" }).fill(password!);
 
   await Promise.all([
     page.waitForURL((url) => url.pathname === "/" || url.pathname === "/select-unit"),

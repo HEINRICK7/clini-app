@@ -3,7 +3,7 @@
 O workflow publica `ghcr.io/heinrick7/clini-app` e, após os testes, atualiza
 somente o serviço `frontend` do Compose no ambiente correspondente.
 
-- Push em `homolog`: deploy de homologação com preenchimento de acesso de teste.
+- Push em `homolog`: deploy de homologação sem credenciais de teste embutidas.
 - Push em `main`: deploy de produção sem credenciais de teste.
 
 O Compose inclui o backend e as dependências para que a primeira publicação do

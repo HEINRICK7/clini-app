@@ -63,11 +63,9 @@ jobs:
           IMAGE: ghcr.io/${{ env.IMAGE_NAME }}
         run: |
           set -euo pipefail
-          test_login=false
           docker build \
             --build-arg NEXT_PUBLIC_API_BASE_URL=/api/v1 \
             --build-arg CLINI_INTERNAL_API_URL=http://backend:8080 \
-            --build-arg NEXT_PUBLIC_ENABLE_TEST_LOGIN="$test_login" \
             --tag "$IMAGE:${GITHUB_REF_NAME}" \
             --tag "$IMAGE:${GITHUB_SHA}" \
             .
