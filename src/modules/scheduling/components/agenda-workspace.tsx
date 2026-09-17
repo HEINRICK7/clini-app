@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { CalendarPlus, ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
 
 import { useCliniServices } from "@/app/service-container";
@@ -16,14 +17,16 @@ const weekdayLabels = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábad
 const defaultAvailability = weekdayLabels.map((_, index) => ({ dayOfWeek: index + 1, startsAt: "08:00", endsAt: "18:00", enabled: false }));
 
 export function AgendaWorkspace() {
+  const searchParams = useSearchParams();
   const { patient, practice, scheduling } = useCliniServices();
   const queryClient = useQueryClient();
   const { selectedUnitId } = useCurrentUnit();
+  const requestedPatientId = searchParams.get("patientId") ?? "";
   const [date, setDate] = useState(localDate);
   const [unitId, setUnitId] = useState(selectedUnitId ?? "");
   const [view, setView] = useState<AgendaView>("day");
-  const [showComposer, setShowComposer] = useState(false);
-  const [patientId, setPatientId] = useState("");
+  const [showComposer, setShowComposer] = useState(Boolean(requestedPatientId));
+  const [patientId, setPatientId] = useState(requestedPatientId);
   const [start, setStart] = useState("09:00");
   const [end, setEnd] = useState("10:00");
   const [type, setType] = useState<Appointment["type"]>("CONSULTATION");
