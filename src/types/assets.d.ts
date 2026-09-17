@@ -1,6 +1,11 @@
-import type { StaticImageData } from "next/image";
-
 declare module "*.png" {
-  const source: StaticImageData;
+  const source: {
+    src: string;
+    height: number;
+    width: number;
+    blurDataURL?: string;
+    blurWidth?: number;
+    blurHeight?: number;
+  };
   export default source;
 }
