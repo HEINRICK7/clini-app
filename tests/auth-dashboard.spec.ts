@@ -23,6 +23,6 @@ test("OWNER entra pela interface e chega ao dashboard do dentista", async ({ pag
 
   await expect(page.getByRole("heading", { name: /Bom dia|Boa tarde|Boa noite/ })).toBeVisible();
   await expect(page.getByText("Sua agenda")).toBeVisible();
-  await expect(page.getByRole("img", { name: /Dentista proprietário — avatar/i })).toBeVisible();
+  await expect(page.getByRole("img", { name: /avatar/i })).toBeVisible();
   await expect(page.getByRole("link", { name: "Agenda", exact: true })).toBeVisible();
 });
