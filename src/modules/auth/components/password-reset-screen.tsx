@@ -6,14 +6,15 @@ import { ArrowLeft, ArrowRight, Eye, EyeOff, LoaderCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { ApiError } from "@/lib/api/client";
+import { useCliniServices } from "@/app/service-container";
+import { apiErrorMessage } from "@/lib/error-policy";
 import { canSubmitNewPassword } from "@/modules/auth/application/password-reset";
-import { authGateway } from "@/modules/auth/infrastructure/auth-gateway";
 
 export function PasswordResetRequestScreen() {
   const router = useRouter();
+  const { auth } = useCliniServices();
   const [email, setEmail] = useState("");
-  const mutation = useMutation({ mutationFn: () => authGateway.requestPasswordReset(email) });
+  const mutation = useMutation({ mutationFn: () => auth.requestPasswordReset(email) });
 
   if (mutation.isSuccess) {
     return <MessageState title="Confira seu e-mail" message="Se houver uma conta Clini com este e-mail, enviaremos um link seguro para redefinir sua senha." onBack={() => router.replace("/login")} />;
@@ -30,11 +31,12 @@ export function PasswordResetRequestScreen() {
 
 export function PasswordResetScreen({ token }: Readonly<{ token: string }>) {
   const router = useRouter();
+  const { auth } = useCliniServices();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
-  const mutation = useMutation({ mutationFn: () => authGateway.resetPassword({ token, password, confirmPassword }), onSuccess: () => router.replace("/login") });
+  const mutation = useMutation({ mutationFn: () => auth.resetPassword({ token, password, confirmPassword }), onSuccess: () => router.replace("/login") });
   const mismatch = confirmPassword.length > 0 && !canSubmitNewPassword(password, confirmPassword) && password !== confirmPassword;
 
   return <AuthFrame title="Crie uma nova senha" subtitle="Escolha uma senha com pelo menos 8 caracteres." onBack={() => router.replace("/login")}>
@@ -60,5 +62,5 @@ function PasswordField({ id, label, value, show, onChange, onToggle }: Readonly<
 }
 
 function ErrorMessage({ error }: Readonly<{ error: Error }>) {
-  return <p aria-live="polite" className="rounded-xl border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger" role="alert">{error instanceof ApiError ? error.message : "Não foi possível concluir a operação."}</p>;
+  return <p aria-live="polite" className="rounded-xl border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger" role="alert">{apiErrorMessage(error, "Não foi possível concluir a operação.")}</p>;
 }

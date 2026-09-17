@@ -7,22 +7,22 @@ import { ArrowRight, CalendarCheck, ChevronDown, MapPin } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
 import { UserAvatar } from "@/components/ui/user-avatar";
-import { ApiError } from "@/lib/api/client";
+import { useCliniServices } from "@/app/service-container";
+import { isUnauthorized } from "@/lib/error-policy";
 import { useAuthSession, useCurrentUnit } from "@/modules/auth/components/auth-gate";
-import { listUnits } from "@/modules/practice/api";
-import { dashboardGateway } from "@/modules/dashboard/infrastructure/dashboard-gateway";
 import { activeUnits, formatDashboardDate, formatMoney, greetingForHour, localCalendarDate, resolveCurrentUnitId } from "@/modules/dashboard/application/dashboard-presentation";
 
 export function DashboardWorkspace() {
   const session = useAuthSession();
+  const { dashboard, practice } = useCliniServices();
   const { selectedUnitId: unitId, selectUnit } = useCurrentUnit();
   const date = localCalendarDate(new Date());
-  const unitsQuery = useQuery({ queryKey: ["units"], queryFn: listUnits, retry: false });
+  const unitsQuery = useQuery({ queryKey: ["units"], queryFn: practice.listUnits, retry: false });
   const units = useMemo(() => activeUnits(unitsQuery.data ?? []), [unitsQuery.data]);
   const currentUnitId = resolveCurrentUnitId(unitId, units);
   const currentUnit = units.find((unit) => unit.id === currentUnitId);
-  const overviewQuery = useQuery({ queryKey: ["dashboard", date, currentUnitId], queryFn: () => dashboardGateway.getOverview({ date, unitId: currentUnitId || undefined }), retry: false });
-  if (overviewQuery.isError && overviewQuery.error instanceof ApiError && overviewQuery.error.status === 401) return <Card className="p-5"><p className="text-sm font-semibold text-primary">Visão geral</p><p className="mt-1 text-sm text-muted-foreground">Entre como dentista proprietário para visualizar o dashboard.</p></Card>;
+  const overviewQuery = useQuery({ queryKey: ["dashboard", date, currentUnitId], queryFn: () => dashboard.getOverview({ date, unitId: currentUnitId || undefined }), retry: false });
+  if (overviewQuery.isError && isUnauthorized(overviewQuery.error)) return <Card className="p-5"><p className="text-sm font-semibold text-primary">Visão geral</p><p className="mt-1 text-sm text-muted-foreground">Entre como dentista proprietário para visualizar o dashboard.</p></Card>;
   const overview = overviewQuery.data;
   const appointments = overview?.upcomingAppointments ?? [];
   const nextAppointment = appointments[0];

@@ -6,11 +6,12 @@ import { useState } from "react";
 import { ArrowLeft, CheckCircle2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { ApiError } from "@/lib/api/client";
-import { commercialLeadInputSchema, submitCommercialLead } from "@/modules/auth/api";
+import { useCliniServices } from "@/app/service-container";
+import { apiErrorMessage } from "@/lib/error-policy";
 
 export function InterestForm() {
   const router = useRouter();
+  const { auth } = useCliniServices();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
@@ -22,7 +23,7 @@ export function InterestForm() {
     event.preventDefault();
     setErrorMessage(null);
 
-    const input = commercialLeadInputSchema.safeParse({ name, email, whatsapp });
+    const input = auth.commercialLeadInputSchema.safeParse({ name, email, whatsapp });
     if (!input.success) {
       setErrorMessage(input.error.issues[0]?.message ?? "Confira seus dados e tente novamente.");
       return;
@@ -30,10 +31,10 @@ export function InterestForm() {
 
     setIsSubmitting(true);
     try {
-      await submitCommercialLead(input.data);
+      await auth.submitCommercialLead(input.data);
       setSubmitted(true);
     } catch (error) {
-      setErrorMessage(error instanceof ApiError ? error.message : "Não foi possível enviar seus dados agora. Tente novamente.");
+      setErrorMessage(apiErrorMessage(error, "Não foi possível enviar seus dados agora. Tente novamente."));
     } finally {
       setIsSubmitting(false);
     }

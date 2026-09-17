@@ -3,21 +3,23 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
+import { useCliniServices } from "@/app/service-container";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ApiError } from "@/lib/api/client";
-import { listNotifications, markNotificationRead, type Notification } from "@/modules/notifications/api";
+import { isUnauthorized } from "@/lib/error-policy";
+import type { Notification } from "@/app/services";
 
 export function NotificationWorkspace() {
+  const { notifications: notificationService } = useCliniServices();
   const queryClient = useQueryClient();
   const [page, setPage] = useState(0);
-  const notificationsQuery = useQuery({ queryKey: ["notifications", page], queryFn: () => listNotifications({ page }), retry: false });
+  const notificationsQuery = useQuery({ queryKey: ["notifications", page], queryFn: () => notificationService.listNotifications({ page }), retry: false });
   const readMutation = useMutation({
-    mutationFn: markNotificationRead,
+    mutationFn: notificationService.markNotificationRead,
     onSuccess: async () => { await queryClient.invalidateQueries({ queryKey: ["notifications"] }); },
   });
 
-  if (notificationsQuery.isError && notificationsQuery.error instanceof ApiError && notificationsQuery.error.status === 401) {
+  if (notificationsQuery.isError && isUnauthorized(notificationsQuery.error)) {
     return <Card className="p-5"><h2 className="text-lg font-bold">Notificações</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">Entre como dentista proprietário para acessar as notificações.</p></Card>;
   }
   if (notificationsQuery.isError) return <Card className="p-5"><p className="text-sm text-danger">Não foi possível carregar as notificações.</p></Card>;

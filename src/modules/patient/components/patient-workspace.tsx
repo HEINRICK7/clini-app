@@ -5,24 +5,17 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ChevronRight, Plus, Search, X } from "lucide-react";
 
+import { useCliniServices } from "@/app/service-container";
+import type { Patient, PatientDraft } from "@/app/services";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { UserAvatar } from "@/components/ui/user-avatar";
-import { ApiError } from "@/lib/api/client";
-import { listUnits } from "@/modules/practice/api";
-import {
-  archivePatient,
-  createPatient,
-  listPatients,
-  transferPatient,
-  type Patient,
-  type PatientDraft,
-} from "@/modules/patient/api";
-import { downloadPatientDataExport } from "@/modules/privacy/api";
+import { apiErrorMessage, apiErrorProblem, isApiError, isUnauthorized } from "@/lib/error-policy";
 
 const initialDraft: PatientDraft = { currentUnitId: "", fullName: "" };
 
 export function PatientWorkspace() {
+  const { patient: patientService, practice, privacy } = useCliniServices();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [patientPage, setPatientPage] = useState(0);
@@ -31,13 +24,13 @@ export function PatientWorkspace() {
   const [showCreate, setShowCreate] = useState(false);
   const [duplicateMatches, setDuplicateMatches] = useState<Patient[]>([]);
   const [message, setMessage] = useState<string | null>(null);
-  const unitsQuery = useQuery({ queryKey: ["units"], queryFn: listUnits, retry: false });
-  const patientsQuery = useQuery({ queryKey: ["patients", search, patientPage], queryFn: () => listPatients(search, patientPage), retry: false });
+  const unitsQuery = useQuery({ queryKey: ["units"], queryFn: practice.listUnits, retry: false });
+  const patientsQuery = useQuery({ queryKey: ["patients", search, patientPage], queryFn: () => patientService.listPatients(search, patientPage), retry: false });
   const activeUnits = useMemo(() => (unitsQuery.data ?? []).filter((unit) => unit.status === "ACTIVE"), [unitsQuery.data]);
 
   const refreshPatients = () => queryClient.invalidateQueries({ queryKey: ["patients"] });
   const createMutation = useMutation({
-    mutationFn: createPatient,
+    mutationFn: patientService.createPatient,
     onSuccess: async () => {
       setDraft({ ...initialDraft, currentUnitId: activeUnits[0]?.id ?? "" });
       setDuplicateMatches([]);
@@ -51,12 +44,12 @@ export function PatientWorkspace() {
     },
   });
   const transferMutation = useMutation({
-    mutationFn: ({ patientId, targetUnitId }: { patientId: string; targetUnitId: string }) => transferPatient(patientId, targetUnitId, "Transferência realizada pelo OWNER"),
+    mutationFn: ({ patientId, targetUnitId }: { patientId: string; targetUnitId: string }) => patientService.transferPatient(patientId, targetUnitId, "Transferência realizada pelo OWNER"),
     onSuccess: async () => { setMessage("Paciente transferido sem apagar o histórico."); await refreshPatients(); },
     onError: (error) => setMessage(getErrorMessage(error)),
   });
   const archiveMutation = useMutation({
-    mutationFn: archivePatient,
+    mutationFn: patientService.archivePatient,
     onSuccess: async () => { setMessage("Paciente arquivado. O histórico foi preservado."); await refreshPatients(); },
     onError: (error) => setMessage(getErrorMessage(error)),
   });
@@ -73,7 +66,7 @@ export function PatientWorkspace() {
     createMutation.mutate({ ...draft, confirmPossibleDuplicate: confirm });
   }
 
-  if (patientsQuery.isError && patientsQuery.error instanceof ApiError && patientsQuery.error.status === 401) {
+  if (patientsQuery.isError && isUnauthorized(patientsQuery.error)) {
     return <Card className="p-5"><h2 className="text-lg font-bold">Pacientes</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">Entre como dentista proprietário para acessar seus pacientes.</p></Card>;
   }
 
@@ -110,7 +103,7 @@ export function PatientWorkspace() {
         <div className="mt-4 grid gap-3">
           {patientsQuery.isPending ? <p className="text-sm text-muted-foreground">Buscando pacientes…</p> : null}
           {!patientsQuery.isPending && patients.length === 0 ? <p className="rounded-xl border border-dashed border-border px-4 py-5 text-sm leading-6 text-muted-foreground">Nenhum paciente encontrado.</p> : null}
-          {patients.map((patient) => <PatientCard key={patient.id} patient={patient} units={activeUnits} busy={busy} onTransfer={(targetUnitId) => transferMutation.mutate({ patientId: patient.id, targetUnitId })} onArchive={() => archiveMutation.mutate(patient.id)} onExport={() => exportPatientData(patient.id)} />)}
+          {patients.map((patient) => <PatientCard key={patient.id} patient={patient} units={activeUnits} busy={busy} onTransfer={(targetUnitId) => transferMutation.mutate({ patientId: patient.id, targetUnitId })} onArchive={() => archiveMutation.mutate(patient.id)} onExport={() => exportPatientData(patient.id, privacy.downloadPatientDataExport)} />)}
           {patientsQuery.data && patientsQuery.data.totalPages > 1 ? <nav aria-label="Paginação de pacientes" className="flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between"><p className="text-xs text-muted-foreground">Página {patientPage + 1} de {patientsQuery.data.totalPages} · {patientsQuery.data.totalItems} paciente(s)</p><div className="flex gap-2"><Button disabled={patientPage === 0 || patientsQuery.isFetching} onClick={() => setPatientPage((current) => current - 1)} size="sm" variant="outline">Anterior</Button><Button disabled={patientPage + 1 >= patientsQuery.data.totalPages || patientsQuery.isFetching} onClick={() => setPatientPage((current) => current + 1)} size="sm" variant="outline">Próxima</Button></div></nav> : null}
         </div>
       </Card>
@@ -118,8 +111,8 @@ export function PatientWorkspace() {
   );
 }
 
-async function exportPatientData(patientId: string) {
-  const blob = await downloadPatientDataExport(patientId);
+async function exportPatientData(patientId: string, download: (patientId: string) => Promise<Blob>) {
+  const blob = await download(patientId);
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
@@ -141,10 +134,11 @@ function DuplicateNotice({ matches, onConfirm }: { matches: Patient[]; onConfirm
 }
 
 function getPossibleMatches(error: unknown): Patient[] {
-  if (!(error instanceof ApiError) || error.status !== 409 || !error.problem?.possibleMatches) return [];
-  return error.problem.possibleMatches.flatMap((match) => { const parsed = match as Partial<Patient>; return typeof parsed.id === "string" && typeof parsed.fullName === "string" ? [match as Patient] : []; });
+  const problem = apiErrorProblem(error);
+  if (!isApiError(error) || error.status !== 409 || !problem?.possibleMatches) return [];
+  return problem.possibleMatches.flatMap((match) => { const parsed = match as Partial<Patient>; return typeof parsed.id === "string" && typeof parsed.fullName === "string" ? [match as Patient] : []; });
 }
 
 function getErrorMessage(error: unknown) {
-  return error instanceof ApiError ? error.message : "Não foi possível concluir a operação.";
+  return apiErrorMessage(error, "Não foi possível concluir a operação.");
 }

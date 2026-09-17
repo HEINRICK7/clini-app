@@ -3,20 +3,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 
+import { useCliniServices } from "@/app/service-container";
+import type { ClinicalDocument, ClinicalDocumentType } from "@/app/services";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ApiError } from "@/lib/api/client";
-import { listPatients } from "@/modules/patient/api";
-import {
-  archiveClinicalDocument,
-  closeClinicalDocument,
-  createClinicalDocument,
-  listClinicalDocuments,
-  rectifyClinicalDocument,
-  updateClinicalDocument,
-  type ClinicalDocument,
-  type ClinicalDocumentType,
-} from "@/modules/clinical/document-api";
+import { apiErrorMessage } from "@/lib/error-policy";
 
 const documentTypes: { value: ClinicalDocumentType; label: string }[] = [
   { value: "CLINICAL_REPORT", label: "Relatório clínico" },
@@ -27,6 +18,7 @@ const documentTypes: { value: ClinicalDocumentType; label: string }[] = [
 ];
 
 export function ClinicalDocumentWorkspace() {
+  const { clinicalDocuments, patient: patientService } = useCliniServices();
   const queryClient = useQueryClient();
   const [patientId, setPatientId] = useState("");
   const [selectedDocumentId, setSelectedDocumentId] = useState("");
@@ -37,22 +29,22 @@ export function ClinicalDocumentWorkspace() {
   const [rectifyContent, setRectifyContent] = useState("");
   const [rectifyReason, setRectifyReason] = useState("");
   const [message, setMessage] = useState<string | null>(null);
-  const patientsQuery = useQuery({ queryKey: ["patients", "clinical-documents"], queryFn: () => listPatients(), retry: false });
+  const patientsQuery = useQuery({ queryKey: ["patients", "clinical-documents"], queryFn: () => patientService.listPatients(), retry: false });
   const patients = useMemo(() => (patientsQuery.data?.items ?? []).filter((patient) => patient.status === "ACTIVE"), [patientsQuery.data]);
   const patient = patients.find((item) => item.id === patientId);
-  const documentsQuery = useQuery({ queryKey: ["clinical-documents", patientId], queryFn: () => listClinicalDocuments(patientId), enabled: Boolean(patientId), retry: false });
+  const documentsQuery = useQuery({ queryKey: ["clinical-documents", patientId], queryFn: () => clinicalDocuments.listClinicalDocuments(patientId), enabled: Boolean(patientId), retry: false });
   const documents = documentsQuery.data?.items ?? [];
   const selectedDocument = documents.find((document) => document.id === selectedDocumentId);
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["clinical-documents", patientId] });
-  const mutationError = (error: unknown) => setMessage(error instanceof ApiError ? error.message : "Não foi possível concluir a operação no documento.");
+  const mutationError = (error: unknown) => setMessage(apiErrorMessage(error, "Não foi possível concluir a operação no documento."));
   const saveMutation = useMutation({
-    mutationFn: () => selectedDocument?.status === "DRAFT" ? updateClinicalDocument(selectedDocument.id, { unitId: patient?.currentUnitId ?? "", title, content, reason: reason || undefined }) : createClinicalDocument({ patientId, unitId: patient?.currentUnitId ?? "", type, title, content, reason: reason || undefined }),
+    mutationFn: () => selectedDocument?.status === "DRAFT" ? clinicalDocuments.updateClinicalDocument(selectedDocument.id, { unitId: patient?.currentUnitId ?? "", title, content, reason: reason || undefined }) : clinicalDocuments.createClinicalDocument({ patientId, unitId: patient?.currentUnitId ?? "", type, title, content, reason: reason || undefined }),
     onSuccess: async (saved) => { setSelectedDocumentId(saved.id); setReason(""); setMessage(`Documento salvo na versão ${saved.version}.`); await refresh(); },
     onError: mutationError,
   });
-  const closeMutation = useMutation({ mutationFn: () => closeClinicalDocument(selectedDocument?.id ?? ""), onSuccess: async () => { setMessage("Documento fechado e preservado."); await refresh(); }, onError: mutationError });
-  const rectifyMutation = useMutation({ mutationFn: () => rectifyClinicalDocument(selectedDocument?.id ?? "", rectifyContent, rectifyReason), onSuccess: async (saved) => { setRectifyContent(""); setRectifyReason(""); setMessage(`Retificação registrada na versão ${saved.version}.`); await refresh(); }, onError: mutationError });
-  const archiveMutation = useMutation({ mutationFn: () => archiveClinicalDocument(selectedDocument?.id ?? ""), onSuccess: async () => { setMessage("Documento arquivado sem apagar o histórico."); await refresh(); }, onError: mutationError });
+  const closeMutation = useMutation({ mutationFn: () => clinicalDocuments.closeClinicalDocument(selectedDocument?.id ?? ""), onSuccess: async () => { setMessage("Documento fechado e preservado."); await refresh(); }, onError: mutationError });
+  const rectifyMutation = useMutation({ mutationFn: () => clinicalDocuments.rectifyClinicalDocument(selectedDocument?.id ?? "", rectifyContent, rectifyReason), onSuccess: async (saved) => { setRectifyContent(""); setRectifyReason(""); setMessage(`Retificação registrada na versão ${saved.version}.`); await refresh(); }, onError: mutationError });
+  const archiveMutation = useMutation({ mutationFn: () => clinicalDocuments.archiveClinicalDocument(selectedDocument?.id ?? ""), onSuccess: async () => { setMessage("Documento arquivado sem apagar o histórico."); await refresh(); }, onError: mutationError });
   const busy = saveMutation.isPending || closeMutation.isPending || rectifyMutation.isPending || archiveMutation.isPending;
 
   function selectDocument(document: ClinicalDocument) {

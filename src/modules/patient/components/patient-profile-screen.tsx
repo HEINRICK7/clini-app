@@ -5,40 +5,29 @@ import Link from "next/link";
 import { useState } from "react";
 import { CalendarPlus, ClipboardPenLine, FileClock, Phone } from "lucide-react";
 
+import { useCliniServices } from "@/app/service-container";
+import type { ClinicalEvolution, Patient, Treatment } from "@/app/services";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { UserAvatar } from "@/components/ui/user-avatar";
-import { ApiError } from "@/lib/api/client";
-import { listClinicalEvolutions, type ClinicalEvolution } from "@/modules/clinical/api";
-import { listTreatments, type Treatment } from "@/modules/clinical/treatment-api";
-import { listAgenda } from "@/modules/scheduling/api";
-import { getPatient, updatePatient, type Patient } from "@/modules/patient/api";
+import { apiErrorMessage } from "@/lib/error-policy";
+import { addDaysAsIsoInstant, localDate } from "@/modules/scheduling/application/calendar-rules";
 
 type ProfileTab = "summary" | "history" | "treatments";
 
-function localDate() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-}
-
-function addDays(date: string, amount: number) {
-  const value = new Date(`${date}T00:00:00`);
-  value.setDate(value.getDate() + amount);
-  return value.toISOString();
-}
-
 export function PatientProfileScreen({ patientId }: { patientId: string }) {
+  const { clinical, clinicalTreatments, patient: patientService, scheduling } = useCliniServices();
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<ProfileTab>("summary");
   const [editing, setEditing] = useState(false);
-  const patientQuery = useQuery({ queryKey: ["patient", patientId], queryFn: () => getPatient(patientId), retry: false });
+  const patientQuery = useQuery({ queryKey: ["patient", patientId], queryFn: () => patientService.getPatient(patientId), retry: false });
   const patient = patientQuery.data;
-  const evolutionsQuery = useQuery({ queryKey: ["clinical-evolutions", patientId, "profile"], queryFn: () => listClinicalEvolutions(patientId), enabled: Boolean(patient), retry: false });
-  const treatmentsQuery = useQuery({ queryKey: ["treatments", patientId, "profile"], queryFn: () => listTreatments(patientId), enabled: Boolean(patient), retry: false });
+  const evolutionsQuery = useQuery({ queryKey: ["clinical-evolutions", patientId, "profile"], queryFn: () => clinical.listClinicalEvolutions(patientId), enabled: Boolean(patient), retry: false });
+  const treatmentsQuery = useQuery({ queryKey: ["treatments", patientId, "profile"], queryFn: () => clinicalTreatments.listTreatments(patientId), enabled: Boolean(patient), retry: false });
   const today = localDate();
-  const agendaQuery = useQuery({ queryKey: ["agenda", "patient-profile", patientId], queryFn: () => listAgenda(`${today}T00:00:00.000Z`, addDays(today, 90), patient?.currentUnitId), enabled: Boolean(patient), retry: false });
+  const agendaQuery = useQuery({ queryKey: ["agenda", "patient-profile", patientId], queryFn: () => scheduling.listAgenda(`${today}T00:00:00.000Z`, addDaysAsIsoInstant(today, 90), patient?.currentUnitId), enabled: Boolean(patient), retry: false });
   const updateMutation = useMutation({
-    mutationFn: (input: PatientUpdateForm) => updatePatient(patientId, input),
+    mutationFn: (input: PatientUpdateForm) => patientService.updatePatient(patientId, input),
     onSuccess: async () => {
       setEditing(false);
       await queryClient.invalidateQueries({ queryKey: ["patient", patientId] });
@@ -46,7 +35,7 @@ export function PatientProfileScreen({ patientId }: { patientId: string }) {
   });
 
   if (patientQuery.isPending) return <Card className="p-5"><p className="text-sm text-muted-foreground">Carregando perfil…</p></Card>;
-  if (patientQuery.isError || !patient) return <Card className="p-5"><p className="text-sm font-semibold text-danger">Não foi possível carregar o perfil do paciente.</p><p className="mt-1 text-sm text-muted-foreground">{patientQuery.error instanceof ApiError ? patientQuery.error.message : "Tente novamente."}</p></Card>;
+  if (patientQuery.isError || !patient) return <Card className="p-5"><p className="text-sm font-semibold text-danger">Não foi possível carregar o perfil do paciente.</p><p className="mt-1 text-sm text-muted-foreground">{apiErrorMessage(patientQuery.error, "Tente novamente.")}</p></Card>;
 
   const nextAppointment = agendaQuery.data?.appointments.find((appointment) => appointment.patientId === patient.id && appointment.status !== "CANCELED");
   const activeTreatment = treatmentsQuery.data?.items.find((treatment) => treatment.status === "ACTIVE");
@@ -83,7 +72,7 @@ type PatientUpdateForm = { fullName: string; dateOfBirth?: string; cpf?: string;
 function EditPatientForm({ patient, busy, onCancel, onSave, error }: { patient: Patient; busy: boolean; onCancel: () => void; onSave: (input: PatientUpdateForm) => void; error: unknown }) {
   const [form, setForm] = useState<PatientUpdateForm>({ fullName: patient.fullName, dateOfBirth: patient.dateOfBirth ?? "", cpf: patient.cpf ?? "", phone: patient.phone ?? "", email: patient.email ?? "", address: patient.address ?? "", responsiblePatientId: patient.responsiblePatientId ?? undefined });
   const change = (field: keyof PatientUpdateForm, value: string) => setForm((current) => ({ ...current, [field]: value }));
-  return <Card className="p-5"><div className="flex items-center justify-between gap-3"><h2 className="text-lg font-bold text-brand-navy">Editar paciente</h2><Button onClick={onCancel} size="sm" variant="ghost">Fechar</Button></div><div className="mt-4 grid gap-3"><ProfileField label="Nome completo" value={form.fullName} onChange={(value) => change("fullName", value)} /><div className="grid gap-3 sm:grid-cols-2"><ProfileField label="Nascimento" type="date" value={form.dateOfBirth ?? ""} onChange={(value) => change("dateOfBirth", value)} /><ProfileField label="CPF" value={form.cpf ?? ""} onChange={(value) => change("cpf", value)} /></div><div className="grid gap-3 sm:grid-cols-2"><ProfileField label="Telefone" value={form.phone ?? ""} onChange={(value) => change("phone", value)} /><ProfileField label="E-mail" type="email" value={form.email ?? ""} onChange={(value) => change("email", value)} /></div><ProfileField label="Endereço" value={form.address ?? ""} onChange={(value) => change("address", value)} />{error ? <p className="rounded-xl bg-danger/10 px-3 py-2 text-sm text-danger">{error instanceof ApiError ? error.message : "Não foi possível salvar."}</p> : null}<div className="flex gap-2"><Button disabled={busy || !form.fullName.trim()} onClick={() => onSave(form)}>{busy ? "Salvando…" : "Salvar alterações"}</Button><Button onClick={onCancel} variant="outline">Cancelar</Button></div></div></Card>;
+  return <Card className="p-5"><div className="flex items-center justify-between gap-3"><h2 className="text-lg font-bold text-brand-navy">Editar paciente</h2><Button onClick={onCancel} size="sm" variant="ghost">Fechar</Button></div><div className="mt-4 grid gap-3"><ProfileField label="Nome completo" value={form.fullName} onChange={(value) => change("fullName", value)} /><div className="grid gap-3 sm:grid-cols-2"><ProfileField label="Nascimento" type="date" value={form.dateOfBirth ?? ""} onChange={(value) => change("dateOfBirth", value)} /><ProfileField label="CPF" value={form.cpf ?? ""} onChange={(value) => change("cpf", value)} /></div><div className="grid gap-3 sm:grid-cols-2"><ProfileField label="Telefone" value={form.phone ?? ""} onChange={(value) => change("phone", value)} /><ProfileField label="E-mail" type="email" value={form.email ?? ""} onChange={(value) => change("email", value)} /></div><ProfileField label="Endereço" value={form.address ?? ""} onChange={(value) => change("address", value)} />{error ? <p className="rounded-xl bg-danger/10 px-3 py-2 text-sm text-danger">{apiErrorMessage(error, "Não foi possível salvar.")}</p> : null}<div className="flex gap-2"><Button disabled={busy || !form.fullName.trim()} onClick={() => onSave(form)}>{busy ? "Salvando…" : "Salvar alterações"}</Button><Button onClick={onCancel} variant="outline">Cancelar</Button></div></div></Card>;
 }
 
 function ProfileField({ label, value, onChange, type = "text" }: { label: string; value: string; onChange: (value: string) => void; type?: string }) { return <label className="grid gap-1.5 text-sm font-semibold"><span>{label}</span><input className="min-h-11 rounded-xl border border-border bg-surface px-3 text-sm font-normal outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" onChange={(event) => onChange(event.target.value)} type={type} value={value} /></label>; }

@@ -5,24 +5,25 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 import { OperationalShell } from "@/app/operational-shell";
+import { useCliniServices } from "@/app/service-container";
 import { SplashScreen } from "@/components/brand/splash-screen";
-import { ApiError } from "@/lib/api/client";
-import { authGateway } from "@/modules/auth/infrastructure/auth-gateway";
+import { isUnauthorized } from "@/lib/error-policy";
 import { DashboardWorkspace } from "@/modules/dashboard/components/dashboard-workspace";
 
 export default function Home() {
   const router = useRouter();
-  const sessionQuery = useQuery({ queryKey: ["auth-session"], queryFn: authGateway.getCurrentSession, retry: false });
-  const isUnauthorized = sessionQuery.error instanceof ApiError && sessionQuery.error.status === 401;
+  const { auth } = useCliniServices();
+  const sessionQuery = useQuery({ queryKey: ["auth-session"], queryFn: auth.getCurrentSession, retry: false });
+  const unauthorized = isUnauthorized(sessionQuery.error);
 
   useEffect(() => {
-    if (!isUnauthorized || sessionQuery.isFetching) return;
+    if (!unauthorized || sessionQuery.isFetching) return;
 
     const timeoutId = window.setTimeout(() => router.replace("/login"), 1800);
     return () => window.clearTimeout(timeoutId);
-  }, [isUnauthorized, router, sessionQuery.isFetching]);
+  }, [router, sessionQuery.isFetching, unauthorized]);
 
-  if (sessionQuery.data || (sessionQuery.isError && !isUnauthorized)) {
+  if (sessionQuery.data || (sessionQuery.isError && !unauthorized)) {
     return <OperationalShell><DashboardWorkspace /></OperationalShell>;
   }
 

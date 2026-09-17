@@ -3,25 +3,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 
+import { useCliniServices } from "@/app/service-container";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ApiError } from "@/lib/api/client";
-import { listCatalogProcedures } from "@/modules/catalog/api";
-import { listPatients } from "@/modules/patient/api";
-import { listUnits } from "@/modules/practice/api";
-import {
-  approveBudget,
-  cancelBudget,
-  createBudget,
-  listBudgets,
-  rejectBudget,
-  settleBudgetInstallment,
-  type Budget,
-  type BudgetPaymentMethod,
-  type BudgetStatus,
-} from "@/modules/finance/budget-api";
+import { apiErrorMessage, isUnauthorized } from "@/lib/error-policy";
+import type { Budget, BudgetPaymentMethod, BudgetStatus } from "@/app/services";
+import { buildInstallments } from "@/modules/finance/application/installments";
+import { formatMoney, parseMoney } from "@/modules/finance/application/money";
 
 export function BudgetWorkspace() {
+  const { catalog, financeBudgets, patient, practice } = useCliniServices();
   const queryClient = useQueryClient();
   const [patientId, setPatientId] = useState("");
   const [unitId, setUnitId] = useState("");
@@ -40,26 +31,26 @@ export function BudgetWorkspace() {
   const [reason, setReason] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [budgetPage, setBudgetPage] = useState(0);
-  const unitsQuery = useQuery({ queryKey: ["units"], queryFn: listUnits, retry: false });
-  const patientsQuery = useQuery({ queryKey: ["patients", "budgets"], queryFn: () => listPatients(), retry: false });
+  const unitsQuery = useQuery({ queryKey: ["units"], queryFn: practice.listUnits, retry: false });
+  const patientsQuery = useQuery({ queryKey: ["patients", "budgets"], queryFn: () => patient.listPatients(), retry: false });
   const units = useMemo(() => (unitsQuery.data ?? []).filter((unit) => unit.status === "ACTIVE"), [unitsQuery.data]);
   const patients = useMemo(() => (patientsQuery.data?.items ?? []).filter((patient) => patient.status === "ACTIVE"), [patientsQuery.data]);
   const effectiveUnitId = unitId || units[0]?.id || "";
-  const catalogQuery = useQuery({ queryKey: ["catalog-procedures", "budget", effectiveUnitId], queryFn: () => listCatalogProcedures({ unitId: effectiveUnitId }), enabled: Boolean(effectiveUnitId), retry: false });
-  const budgetsQuery = useQuery({ queryKey: ["budgets", patientId, unitId, status, budgetPage], queryFn: () => listBudgets({ patientId: patientId || undefined, unitId: unitId || undefined, status: status || undefined, page: budgetPage }), retry: false });
+  const catalogQuery = useQuery({ queryKey: ["catalog-procedures", "budget", effectiveUnitId], queryFn: () => catalog.listCatalogProcedures({ unitId: effectiveUnitId }), enabled: Boolean(effectiveUnitId), retry: false });
+  const budgetsQuery = useQuery({ queryKey: ["budgets", patientId, unitId, status, budgetPage], queryFn: () => financeBudgets.listBudgets({ patientId: patientId || undefined, unitId: unitId || undefined, status: status || undefined, page: budgetPage }), retry: false });
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["budgets"] });
-  const mutationError = (error: unknown) => setMessage(error instanceof ApiError ? error.message : "Não foi possível concluir a operação no orçamento.");
+  const mutationError = (error: unknown) => setMessage(apiErrorMessage(error, "Não foi possível concluir a operação no orçamento."));
   const selectedCatalog = catalogQuery.data?.items.find((item) => item.id === catalogProcedureId);
   const createMutation = useMutation({
-    mutationFn: () => createBudget({ patientId, unitId: effectiveUnitId, title, items: [{ catalogProcedureId: catalogProcedureId || undefined, description: catalogProcedureId ? undefined : description, quantity: Number(quantity), unitPriceCents: catalogProcedureId ? undefined : parseMoney(unitPrice) }], installments: buildInstallments(selectedCatalog?.unitConfiguration?.priceCents ?? parseMoney(unitPrice), Number(quantity), parseMoney(discount), Number(installmentCount), firstDueOn), discountCents: discount.trim() ? parseMoney(discount) : undefined, discountReason: discount.trim() ? discountReason || undefined : undefined }),
+    mutationFn: () => financeBudgets.createBudget({ patientId, unitId: effectiveUnitId, title, items: [{ catalogProcedureId: catalogProcedureId || undefined, description: catalogProcedureId ? undefined : description, quantity: Number(quantity), unitPriceCents: catalogProcedureId ? undefined : parseMoney(unitPrice) }], installments: buildInstallments(selectedCatalog?.unitConfiguration?.priceCents ?? parseMoney(unitPrice), Number(quantity), parseMoney(discount), Number(installmentCount), firstDueOn), discountCents: discount.trim() ? parseMoney(discount) : undefined, discountReason: discount.trim() ? discountReason || undefined : undefined }),
     onSuccess: async () => { setTitle(""); setDescription(""); setUnitPrice(""); setDiscount(""); setDiscountReason(""); setInstallmentCount("1"); setFirstDueOn(""); setMessage("Orçamento criado com preços congelados."); await refresh(); }, onError: mutationError,
   });
-  const approveMutation = useMutation({ mutationFn: (id: string) => approveBudget(id), onSuccess: async () => { setMessage("Orçamento aprovado."); await refresh(); }, onError: mutationError });
-  const rejectMutation = useMutation({ mutationFn: (id: string) => rejectBudget(id, reason), onSuccess: async () => { setReason(""); setMessage("Orçamento rejeitado e preservado."); await refresh(); }, onError: mutationError });
-  const cancelMutation = useMutation({ mutationFn: (id: string) => cancelBudget(id, reason), onSuccess: async () => { setReason(""); setMessage("Orçamento cancelado sem excluir o histórico."); await refresh(); }, onError: mutationError });
-  const settleInstallmentMutation = useMutation({ mutationFn: ({ budgetId, installmentId }: { budgetId: string; installmentId: string }) => settleBudgetInstallment(budgetId, installmentId, paymentMethod, paymentReference || undefined), onSuccess: async () => { setPaymentReference(""); setMessage("Parcela liquidada e histórico preservado."); await refresh(); }, onError: mutationError });
+  const approveMutation = useMutation({ mutationFn: (id: string) => financeBudgets.approveBudget(id), onSuccess: async () => { setMessage("Orçamento aprovado."); await refresh(); }, onError: mutationError });
+  const rejectMutation = useMutation({ mutationFn: (id: string) => financeBudgets.rejectBudget(id, reason), onSuccess: async () => { setReason(""); setMessage("Orçamento rejeitado e preservado."); await refresh(); }, onError: mutationError });
+  const cancelMutation = useMutation({ mutationFn: (id: string) => financeBudgets.cancelBudget(id, reason), onSuccess: async () => { setReason(""); setMessage("Orçamento cancelado sem excluir o histórico."); await refresh(); }, onError: mutationError });
+  const settleInstallmentMutation = useMutation({ mutationFn: ({ budgetId, installmentId }: { budgetId: string; installmentId: string }) => financeBudgets.settleBudgetInstallment(budgetId, installmentId, paymentMethod, paymentReference || undefined), onSuccess: async () => { setPaymentReference(""); setMessage("Parcela liquidada e histórico preservado."); await refresh(); }, onError: mutationError });
   const busy = createMutation.isPending || approveMutation.isPending || rejectMutation.isPending || cancelMutation.isPending || settleInstallmentMutation.isPending;
-  if (budgetsQuery.isError && budgetsQuery.error instanceof ApiError && budgetsQuery.error.status === 401) return <Card className="p-5"><h2 className="text-lg font-bold">Orçamentos</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">Entre como dentista proprietário para acessar os orçamentos.</p></Card>;
+  if (budgetsQuery.isError && isUnauthorized(budgetsQuery.error)) return <Card className="p-5"><h2 className="text-lg font-bold">Orçamentos</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">Entre como dentista proprietário para acessar os orçamentos.</p></Card>;
   return <section className="grid gap-4 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]"><Card className="p-5 sm:p-6"><p className="text-sm font-semibold text-primary">Financeiro/comercial · somente OWNER</p><h2 className="mt-1 text-xl font-bold tracking-tight">Novo orçamento</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">O preço é capturado no momento da criação e não muda quando o catálogo for alterado.</p><div className="mt-5 grid gap-3"><BudgetSelect label="Patient" value={patientId} onChange={setPatientId} options={patients.map((patient) => ({ value: patient.id, label: patient.fullName }))} /><BudgetSelect label="Unit de referência" value={unitId} onChange={setUnitId} options={units.map((unit) => ({ value: unit.id, label: unit.name }))} /><BudgetField label="Título" value={title} onChange={setTitle} placeholder="Ex.: Plano de restauração" /><BudgetSelect label="Procedimento do catálogo (opcional)" value={catalogProcedureId} onChange={setCatalogProcedureId} options={(catalogQuery.data?.items ?? []).map((item) => ({ value: item.id, label: `${item.name}${item.unitConfiguration?.priceCents != null ? ` · ${formatMoney(item.unitConfiguration.priceCents)}` : ""}` }))} /><div className="grid gap-3 sm:grid-cols-2"><BudgetField label="Descrição personalizada" value={description} onChange={setDescription} placeholder="Obrigatória sem catálogo" /><BudgetField label="Preço personalizado (R$)" value={unitPrice} onChange={setUnitPrice} placeholder="Obrigatório sem catálogo" /></div><BudgetField label="Quantidade" type="number" value={quantity} onChange={setQuantity} placeholder="1" /><div className="grid gap-3 sm:grid-cols-2"><BudgetField label="Desconto (R$), opcional" value={discount} onChange={setDiscount} placeholder="0,00" /><BudgetField label="Motivo do desconto" value={discountReason} onChange={setDiscountReason} placeholder="Obrigatório com desconto" /></div><div className="grid gap-3 sm:grid-cols-2"><BudgetField label="Número de parcelas, opcional" type="number" value={installmentCount} onChange={setInstallmentCount} placeholder="1" /><BudgetField label="Primeiro vencimento" type="date" value={firstDueOn} onChange={setFirstDueOn} /></div><Button disabled={busy || !patientId || !effectiveUnitId || !title.trim() || (!catalogProcedureId && (!description.trim() || parseMoney(unitPrice) < 1)) || (catalogProcedureId && !selectedCatalog) || Number(quantity) < 1 || (parseMoney(discount) > 0 && !discountReason.trim()) || (Number(installmentCount) > 1 && !firstDueOn)} onClick={() => createMutation.mutate()}>{createMutation.isPending ? "Criando…" : "Criar orçamento"}</Button>{message ? <p aria-live="polite" className="rounded-xl bg-cyan-50 px-3 py-2 text-sm leading-5 text-brand-navy">{message}</p> : null}</div></Card><Card className="p-5 sm:p-6"><div className="flex items-end justify-between gap-3"><div><p className="text-sm font-semibold text-primary">Patient + Tenant + Unit</p><h2 className="mt-1 text-xl font-bold tracking-tight">Orçamentos preservados</h2></div><span className="rounded-full bg-surface-muted px-2.5 py-1 text-xs font-bold text-muted-foreground">{budgetsQuery.data?.totalItems ?? 0}</span></div><div className="mt-4 grid gap-3 sm:grid-cols-3"><BudgetSelect label="Filtrar Patient" value={patientId} onChange={(value) => { setPatientId(value); setBudgetPage(0); }} options={patients.map((patient) => ({ value: patient.id, label: patient.fullName }))} /><BudgetSelect label="Filtrar Unit" value={unitId} onChange={(value) => { setUnitId(value); setBudgetPage(0); }} options={units.map((unit) => ({ value: unit.id, label: unit.name }))} /><BudgetSelect label="Status" value={status} onChange={(value) => { setStatus(value as BudgetStatus | ""); setBudgetPage(0); }} options={[{ value: "", label: "Todos" }, { value: "DRAFT", label: "Rascunhos" }, { value: "APPROVED", label: "Aprovados" }, { value: "REJECTED", label: "Rejeitados" }, { value: "CANCELED", label: "Cancelados" }]} /></div><div className="mt-4 grid gap-3">{budgetsQuery.isPending ? <p className="text-sm text-muted-foreground">Carregando orçamentos…</p> : null}{!budgetsQuery.isPending && !budgetsQuery.data?.items.length ? <p className="rounded-xl border border-dashed border-border px-4 py-5 text-sm text-muted-foreground">Nenhum orçamento para os filtros atuais.</p> : null}{budgetsQuery.data?.items.map((budget) => <BudgetCard budget={budget} busy={busy} reason={reason} paymentMethod={paymentMethod} paymentReference={paymentReference} onPaymentMethod={setPaymentMethod} onPaymentReference={setPaymentReference} onReason={setReason} onApprove={() => approveMutation.mutate(budget.id)} onReject={() => rejectMutation.mutate(budget.id)} onCancel={() => cancelMutation.mutate(budget.id)} onSettle={(installmentId) => settleInstallmentMutation.mutate({ budgetId: budget.id, installmentId })} key={budget.id} />)}{budgetsQuery.data && budgetsQuery.data.totalPages > 1 ? <nav aria-label="Paginação de orçamentos" className="flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between"><p className="text-xs text-muted-foreground">Página {budgetPage + 1} de {budgetsQuery.data.totalPages} · {budgetsQuery.data.totalItems} orçamento(s)</p><div className="flex gap-2"><Button disabled={budgetPage === 0 || budgetsQuery.isFetching} onClick={() => setBudgetPage((current) => current - 1)} size="sm" variant="outline">Anterior</Button><Button disabled={budgetPage + 1 >= budgetsQuery.data.totalPages || budgetsQuery.isFetching} onClick={() => setBudgetPage((current) => current + 1)} size="sm" variant="outline">Próxima</Button></div></nav> : null}</div></Card></section>;
 }
 
@@ -67,14 +58,3 @@ function BudgetCard({ budget, busy, reason, paymentMethod, paymentReference, onP
 
 function BudgetSelect({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: { value: string; label: string }[] }) { return <label className="grid gap-1.5 text-sm font-semibold"><span>{label}</span><select className="min-h-12 rounded-xl border border-border bg-surface px-3 text-base font-normal" onChange={(event) => onChange(event.target.value)} value={value}>{options.some((option) => option.value === "") ? null : <option value="">Selecione</option>}{options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>; }
 function BudgetField({ label, value, onChange, placeholder, type = "text" }: { label: string; value: string; onChange: (value: string) => void; placeholder?: string; type?: string }) { return <label className="grid gap-1.5 text-sm font-semibold"><span>{label}</span><input className="min-h-11 rounded-xl border border-border bg-surface px-3 text-sm font-normal" onChange={(event) => onChange(event.target.value)} placeholder={placeholder} type={type} value={value} /></label>; }
-function parseMoney(value: string) { const parsed = Number(value.trim().replace(/\./g, "").replace(",", ".")); return Number.isFinite(parsed) && parsed >= 0 ? Math.round(parsed * 100) : 0; }
-function formatMoney(cents: number) { return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }); }
-function buildInstallments(unitPriceCents: number, quantity: number, discountCents: number, count: number, firstDueOn: string) {
-  if (count <= 1 || !firstDueOn) return undefined;
-  const total = unitPriceCents * quantity - discountCents;
-  if (total < count) return undefined;
-  const base = Math.floor(total / count);
-  const remainder = total % count;
-  return Array.from({ length: count }, (_, index) => ({ number: index + 1, amountCents: base + (index < remainder ? 1 : 0), dueOn: addMonths(firstDueOn, index) }));
-}
-function addMonths(date: string, months: number) { const value = new Date(`${date}T12:00:00Z`); value.setUTCMonth(value.getUTCMonth() + months); return value.toISOString().slice(0, 10); }

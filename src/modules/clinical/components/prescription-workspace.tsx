@@ -3,13 +3,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 
+import { useCliniServices } from "@/app/service-container";
+import type { Prescription, PrescriptionItemInput } from "@/app/services";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ApiError } from "@/lib/api/client";
-import { listPatients } from "@/modules/patient/api";
-import { archivePrescription, closePrescription, createPrescription, listPrescriptions, rectifyPrescription, updatePrescription, type Prescription, type PrescriptionItemInput } from "@/modules/clinical/prescription-api";
+import { apiErrorMessage } from "@/lib/error-policy";
 
 export function PrescriptionWorkspace() {
+  const { clinicalPrescriptions, patient: patientService } = useCliniServices();
   const queryClient = useQueryClient();
   const [patientId, setPatientId] = useState("");
   const [selectedId, setSelectedId] = useState("");
@@ -27,19 +28,19 @@ export function PrescriptionWorkspace() {
   const [reason, setReason] = useState("");
   const [rectifyReason, setRectifyReason] = useState("");
   const [message, setMessage] = useState<string | null>(null);
-  const patientsQuery = useQuery({ queryKey: ["patients", "prescriptions"], queryFn: () => listPatients(), retry: false });
+  const patientsQuery = useQuery({ queryKey: ["patients", "prescriptions"], queryFn: () => patientService.listPatients(), retry: false });
   const patients = useMemo(() => (patientsQuery.data?.items ?? []).filter((patient) => patient.status === "ACTIVE"), [patientsQuery.data]);
   const patient = patients.find((item) => item.id === patientId);
-  const prescriptionsQuery = useQuery({ queryKey: ["prescriptions", patientId], queryFn: () => listPrescriptions(patientId), enabled: Boolean(patientId), retry: false });
+  const prescriptionsQuery = useQuery({ queryKey: ["prescriptions", patientId], queryFn: () => clinicalPrescriptions.listPrescriptions(patientId), enabled: Boolean(patientId), retry: false });
   const prescriptions = prescriptionsQuery.data?.items ?? [];
   const selected = prescriptions.find((prescription) => prescription.id === selectedId);
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["prescriptions", patientId] });
-  const mutationError = (error: unknown) => setMessage(error instanceof ApiError ? error.message : "Não foi possível concluir a operação na prescrição.");
+  const mutationError = (error: unknown) => setMessage(apiErrorMessage(error, "Não foi possível concluir a operação na prescrição."));
   const payloadItems = items;
-  const saveMutation = useMutation({ mutationFn: () => selected?.status === "DRAFT" ? updatePrescription(selected.id, { unitId: patient?.currentUnitId ?? "", items: payloadItems, reason: reason || undefined }) : createPrescription({ patientId, unitId: patient?.currentUnitId ?? "", items: payloadItems, reason: reason || undefined }), onSuccess: async (saved) => { setSelectedId(saved.id); setItems(saved.items.map(toInput)); setReason(""); setMessage(`Prescrição salva na versão ${saved.version}.`); await refresh(); }, onError: mutationError });
-  const closeMutation = useMutation({ mutationFn: () => closePrescription(selected?.id ?? ""), onSuccess: async () => { setMessage("Prescrição fechada e preservada."); await refresh(); }, onError: mutationError });
-  const rectifyMutation = useMutation({ mutationFn: () => rectifyPrescription(selected?.id ?? "", payloadItems, rectifyReason), onSuccess: async (saved) => { setItems(saved.items.map(toInput)); setRectifyReason(""); setMessage(`Retificação registrada na versão ${saved.version}.`); await refresh(); }, onError: mutationError });
-  const archiveMutation = useMutation({ mutationFn: () => archivePrescription(selected?.id ?? ""), onSuccess: async () => { setMessage("Prescrição arquivada sem apagar o histórico."); await refresh(); }, onError: mutationError });
+  const saveMutation = useMutation({ mutationFn: () => selected?.status === "DRAFT" ? clinicalPrescriptions.updatePrescription(selected.id, { unitId: patient?.currentUnitId ?? "", items: payloadItems, reason: reason || undefined }) : clinicalPrescriptions.createPrescription({ patientId, unitId: patient?.currentUnitId ?? "", items: payloadItems, reason: reason || undefined }), onSuccess: async (saved) => { setSelectedId(saved.id); setItems(saved.items.map(toInput)); setReason(""); setMessage(`Prescrição salva na versão ${saved.version}.`); await refresh(); }, onError: mutationError });
+  const closeMutation = useMutation({ mutationFn: () => clinicalPrescriptions.closePrescription(selected?.id ?? ""), onSuccess: async () => { setMessage("Prescrição fechada e preservada."); await refresh(); }, onError: mutationError });
+  const rectifyMutation = useMutation({ mutationFn: () => clinicalPrescriptions.rectifyPrescription(selected?.id ?? "", payloadItems, rectifyReason), onSuccess: async (saved) => { setItems(saved.items.map(toInput)); setRectifyReason(""); setMessage(`Retificação registrada na versão ${saved.version}.`); await refresh(); }, onError: mutationError });
+  const archiveMutation = useMutation({ mutationFn: () => clinicalPrescriptions.archivePrescription(selected?.id ?? ""), onSuccess: async () => { setMessage("Prescrição arquivada sem apagar o histórico."); await refresh(); }, onError: mutationError });
   const busy = saveMutation.isPending || closeMutation.isPending || rectifyMutation.isPending || archiveMutation.isPending;
 
   function addItem() {

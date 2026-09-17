@@ -6,14 +6,15 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, Eye, EyeOff, LoaderCircle } from "lucide-react";
 import { useState } from "react";
 
-import { ApiError } from "@/lib/api/client";
-import { authGateway } from "@/modules/auth/infrastructure/auth-gateway";
+import { useCliniServices } from "@/app/service-container";
+import { isApiError } from "@/lib/error-policy";
 
 export function ActivationScreen({ token }: Readonly<{ token: string }>) {
   const router = useRouter();
+  const { auth } = useCliniServices();
   const invitationQuery = useQuery({
     queryKey: ["owner-invitation", token],
-    queryFn: () => authGateway.getInvitationDetails(token),
+    queryFn: () => auth.getInvitationDetails(token),
     retry: false,
   });
   const [password, setPassword] = useState("");
@@ -23,7 +24,7 @@ export function ActivationScreen({ token }: Readonly<{ token: string }>) {
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [loadedAt] = useState(() => Date.now());
   const activateMutation = useMutation({
-    mutationFn: () => authGateway.activateInvitation(token, { password, confirmPassword, termsAccepted }),
+    mutationFn: () => auth.activateInvitation(token, { password, confirmPassword, termsAccepted }),
     onSuccess: () => {
       router.replace("/welcome");
       router.refresh();
@@ -113,11 +114,11 @@ function ActivationState({ message }: Readonly<{ message: string }>) {
   return <section aria-live="polite" className="flex min-h-[100dvh] w-full max-w-3xl flex-col items-center justify-center bg-surface px-5 text-center"><Image alt="Clini" className="h-auto w-52" height={1254} priority src="/icon-sem-slogan.png" width={1254} /><LoaderCircle aria-hidden="true" className="mt-12 h-8 w-8 animate-spin text-primary" /><p className="mt-5 text-lg font-semibold text-slate-500">{message}</p></section>;
 }
 
-function ActivationError({ error, onBack }: Readonly<{ error: Error | null; onBack: () => void }>) {
+function ActivationError({ error, onBack }: Readonly<{ error: unknown; onBack: () => void }>) {
   return <section aria-labelledby="activation-error-title" className="flex min-h-[100dvh] w-full max-w-3xl flex-col items-center justify-center bg-surface px-5 text-center"><Image alt="Clini" className="h-auto w-52" height={1254} priority src="/icon-sem-slogan.png" width={1254} /><h1 className="mt-12 text-3xl font-extrabold tracking-tight text-brand-navy" id="activation-error-title">Este convite não está disponível</h1><p className="mt-4 max-w-md text-lg leading-7 text-slate-500">{activationErrorMessage(error)}</p><button className="mt-8 inline-flex h-14 items-center justify-center rounded-2xl bg-primary px-8 text-base font-extrabold text-primary-foreground hover:bg-primary-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary" onClick={onBack} type="button">Voltar para o login</button></section>;
 }
 
-function activationErrorMessage(error: Error | null) {
-  if (error instanceof ApiError) return error.message;
+function activationErrorMessage(error: unknown) {
+  if (isApiError(error)) return error.message;
   return "Não foi possível validar este convite. Solicite um novo link ao suporte.";
 }

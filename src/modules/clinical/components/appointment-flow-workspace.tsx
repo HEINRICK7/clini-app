@@ -5,22 +5,22 @@ import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { ArrowLeft, Check, CheckCircle2, Circle, Search } from "lucide-react";
 
+import { useCliniServices } from "@/app/service-container";
+import type { Patient } from "@/app/services";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { UserAvatar } from "@/components/ui/user-avatar";
-import { ApiError } from "@/lib/api/client";
-import { createClinicalEvolution } from "@/modules/clinical/api";
-import { listCatalogProcedures } from "@/modules/catalog/api";
-import { listPatients, type Patient } from "@/modules/patient/api";
+import { apiErrorMessage } from "@/lib/error-policy";
+import { buildEvolutionContent, type NextStep } from "@/modules/clinical/application/appointment-rules";
 
 type FlowStep = 1 | 2 | 3 | 4;
-type NextStep = "completed" | "return" | "continue";
 
 const stepLabels = ["Motivo / contexto", "Procedimentos", "Observações", "Próximo passo"] as const;
 
 export function AppointmentFlowWorkspace() {
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
+  const { catalog, clinical, patient: patientService } = useCliniServices();
   const [step, setStep] = useState<FlowStep>(1);
   const [patientId, setPatientId] = useState(searchParams.get("patientId") ?? "");
   const [context, setContext] = useState("");
@@ -29,17 +29,17 @@ export function AppointmentFlowWorkspace() {
   const [nextStep, setNextStep] = useState<NextStep>("return");
   const [returnDays, setReturnDays] = useState("30");
   const [message, setMessage] = useState<string | null>(null);
-  const patientsQuery = useQuery({ queryKey: ["patients", "appointment-flow"], queryFn: () => listPatients(), retry: false });
+  const patientsQuery = useQuery({ queryKey: ["patients", "appointment-flow"], queryFn: () => patientService.listPatients(), retry: false });
   const patients = useMemo(() => (patientsQuery.data?.items ?? []).filter((patient) => patient.status === "ACTIVE"), [patientsQuery.data]);
   const patient = patients.find((item) => item.id === patientId);
-  const catalogQuery = useQuery({ queryKey: ["catalog-procedures", "appointment-flow", patient?.currentUnitId], queryFn: () => listCatalogProcedures({ unitId: patient?.currentUnitId }), enabled: Boolean(patient?.currentUnitId), retry: false });
+  const catalogQuery = useQuery({ queryKey: ["catalog-procedures", "appointment-flow", patient?.currentUnitId], queryFn: () => catalog.listCatalogProcedures({ unitId: patient?.currentUnitId }), enabled: Boolean(patient?.currentUnitId), retry: false });
   const finishMutation = useMutation({
-    mutationFn: () => createClinicalEvolution({ patientId, unitId: patient?.currentUnitId ?? "", content: buildEvolutionContent({ context, observations, procedures: catalogQuery.data?.items.filter((item) => selectedProcedureIds.includes(item.id)).map((item) => item.name) ?? [], nextStep, returnDays }), appointmentId: searchParams.get("appointmentId") ?? undefined }),
+    mutationFn: () => clinical.createClinicalEvolution({ patientId, unitId: patient?.currentUnitId ?? "", content: buildEvolutionContent({ context, observations, procedures: catalogQuery.data?.items.filter((item) => selectedProcedureIds.includes(item.id)).map((item) => item.name) ?? [], nextStep, returnDays }), appointmentId: searchParams.get("appointmentId") ?? undefined }),
     onSuccess: async () => {
       setMessage("Atendimento finalizado e salvo no prontuário.");
       await queryClient.invalidateQueries({ queryKey: ["clinical-evolutions", patientId] });
     },
-    onError: (error) => setMessage(error instanceof ApiError ? error.message : "Não foi possível finalizar o atendimento."),
+    onError: (error) => setMessage(apiErrorMessage(error, "Não foi possível finalizar o atendimento.")),
   });
 
   function toggleProcedure(procedureId: string) {
@@ -83,9 +83,4 @@ function ObservationsStep({ observations, onChange }: { observations: string; on
 
 function FinishStep({ nextStep, returnDays, onNextStep, onReturnDays }: { nextStep: NextStep; returnDays: string; onNextStep: (value: NextStep) => void; onReturnDays: (value: string) => void }) {
   return <Card className="p-5 sm:p-6"><p className="text-sm font-bold text-brand-navy">Qual o próximo passo?</p><div className="mt-4 grid gap-2">{([["completed", "Tratamento concluído"], ["return", "Precisa de retorno"], ["continue", "Continuar tratamento"]] as const).map(([value, label]) => { const selected = nextStep === value; return <button aria-pressed={selected} className={`flex min-h-14 items-center gap-3 rounded-xl border px-3 text-left ${selected ? "border-primary bg-blue-50/50" : "border-border"}`} key={value} onClick={() => onNextStep(value)} type="button"><span className={`flex h-5 w-5 items-center justify-center rounded-full border ${selected ? "border-primary bg-primary text-white" : "border-border"}`}>{selected ? <Check aria-hidden="true" className="h-3 w-3" /> : null}</span><span className="text-sm font-semibold">{label}</span></button>; })}</div>{nextStep === "return" ? <label className="mt-4 grid gap-1.5 text-sm font-semibold"><span>Em quantos dias?</span><div className="flex items-center gap-2"><input className="min-h-11 w-24 rounded-xl border border-border bg-surface px-3 text-sm" min="1" onChange={(event) => onReturnDays(event.target.value)} type="number" value={returnDays} /><span className="text-sm font-normal text-muted-foreground">dias</span></div></label> : null}</Card>;
-}
-
-function buildEvolutionContent({ context, observations, procedures, nextStep, returnDays }: { context: string; observations: string; procedures: string[]; nextStep: NextStep; returnDays: string }) {
-  const nextLabel = nextStep === "completed" ? "Tratamento concluído" : nextStep === "continue" ? "Continuar tratamento" : `Retorno em ${returnDays || "30"} dias`;
-  return [`Motivo / contexto:\n${context}`, procedures.length ? `Procedimentos:\n${procedures.map((procedure) => `- ${procedure}`).join("\n")}` : "Procedimentos:\nNenhum procedimento selecionado.", `Observações:\n${observations || "Nenhuma observação adicional."}`, `Próximo passo:\n${nextLabel}`].join("\n\n");
 }

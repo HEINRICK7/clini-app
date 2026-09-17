@@ -3,20 +3,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 
+import { useCliniServices } from "@/app/service-container";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ApiError } from "@/lib/api/client";
-import { listUnits } from "@/modules/practice/api";
-import {
-  archiveCatalogProcedure,
-  configureCatalogProcedure,
-  createCatalogProcedure,
-  listCatalogProcedures,
-  updateCatalogProcedure,
-  type CatalogProcedure,
-} from "@/modules/catalog/api";
+import { apiErrorMessage, isUnauthorized } from "@/lib/error-policy";
+import type { CatalogProcedure } from "@/app/services";
+import { formatPrice, parsePrice } from "@/modules/catalog/application/catalog-rules";
 
 export function CatalogWorkspace() {
+  const { catalog, practice } = useCliniServices();
   const queryClient = useQueryClient();
   const [unitId, setUnitId] = useState("");
   const [query, setQuery] = useState("");
@@ -27,12 +22,12 @@ export function CatalogWorkspace() {
   const [price, setPrice] = useState("");
   const [duration, setDuration] = useState("");
   const [message, setMessage] = useState<string | null>(null);
-  const unitsQuery = useQuery({ queryKey: ["units"], queryFn: listUnits, retry: false });
+  const unitsQuery = useQuery({ queryKey: ["units"], queryFn: practice.listUnits, retry: false });
   const activeUnits = useMemo(() => (unitsQuery.data ?? []).filter((unit) => unit.status === "ACTIVE"), [unitsQuery.data]);
   const effectiveUnitId = unitId || activeUnits[0]?.id || "";
   const proceduresQuery = useQuery({
     queryKey: ["catalog-procedures", effectiveUnitId, query, includeArchived],
-    queryFn: () => listCatalogProcedures({ unitId: effectiveUnitId || undefined, query, includeArchived }),
+    queryFn: () => catalog.listCatalogProcedures({ unitId: effectiveUnitId || undefined, query, includeArchived }),
     retry: false,
   });
   const procedures = proceduresQuery.data?.items ?? [];
@@ -41,8 +36,8 @@ export function CatalogWorkspace() {
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["catalog-procedures"] });
   const saveMutation = useMutation({
     mutationFn: () => selectedId
-      ? updateCatalogProcedure(selectedId, { name, description: description || undefined })
-      : createCatalogProcedure({ name, description: description || undefined }),
+      ? catalog.updateCatalogProcedure(selectedId, { name, description: description || undefined })
+      : catalog.createCatalogProcedure({ name, description: description || undefined }),
     onSuccess: async (procedure) => {
       setSelectedId(procedure.id);
       setName(procedure.name);
@@ -53,7 +48,7 @@ export function CatalogWorkspace() {
     onError: (error) => setMessage(errorMessage(error)),
   });
   const configureMutation = useMutation({
-    mutationFn: () => configureCatalogProcedure({
+    mutationFn: () => catalog.configureCatalogProcedure({
       procedureId: selectedId ?? "",
       unitId: effectiveUnitId,
       priceCents: parsePrice(price),
@@ -68,7 +63,7 @@ export function CatalogWorkspace() {
     onError: (error) => setMessage(errorMessage(error)),
   });
   const archiveMutation = useMutation({
-    mutationFn: () => archiveCatalogProcedure(selectedId ?? ""),
+    mutationFn: () => catalog.archiveCatalogProcedure(selectedId ?? ""),
     onSuccess: async () => { setMessage("Procedimento arquivado sem excluir o histórico."); await refresh(); },
     onError: (error) => setMessage(errorMessage(error)),
   });
@@ -83,7 +78,7 @@ export function CatalogWorkspace() {
     setMessage(null);
   }
 
-  if (proceduresQuery.isError && proceduresQuery.error instanceof ApiError && proceduresQuery.error.status === 401) {
+  if (proceduresQuery.isError && isUnauthorized(proceduresQuery.error)) {
     return <Card className="p-5"><h2 className="text-lg font-bold">Catálogo de procedimentos</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">Entre como dentista proprietário para configurar procedimentos.</p></Card>;
   }
   if (proceduresQuery.isError) return <Card className="p-5"><p className="text-sm text-danger">Não foi possível carregar o catálogo.</p></Card>;
@@ -120,18 +115,6 @@ function CatalogField({ label, value, onChange, placeholder, type = "text" }: { 
   return <label className="grid gap-1.5 text-sm font-semibold"><span>{label}</span><input className="min-h-12 rounded-xl border border-border bg-surface px-4 text-base font-normal outline-none focus:border-primary focus:ring-4 focus:ring-cyan-100" onChange={(event) => onChange(event.target.value)} placeholder={placeholder} type={type} value={value} /></label>;
 }
 
-function parsePrice(value: string): number | null {
-  if (!value.trim()) return null;
-  const normalized = value.trim().replace(/\./g, "").replace(",", ".");
-  const parsed = Number(normalized);
-  return Number.isFinite(parsed) && parsed >= 0 ? Math.round(parsed * 100) : null;
-}
-
-function formatPrice(cents: number | null | undefined): string {
-  if (cents == null) return "";
-  return (cents / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
 function errorMessage(error: unknown) {
-  return error instanceof ApiError ? error.message : "Não foi possível concluir a operação.";
+  return apiErrorMessage(error, "Não foi possível concluir a operação.");
 }

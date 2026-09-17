@@ -4,19 +4,19 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { CalendarPlus, ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
 
+import { useCliniServices } from "@/app/service-container";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ApiError } from "@/lib/api/client";
+import { apiErrorMessage, isUnauthorized } from "@/lib/error-policy";
 import { useCurrentUnit } from "@/modules/auth/components/auth-gate";
-import { listPatients } from "@/modules/patient/api";
-import { listUnits } from "@/modules/practice/api";
-import { cancelAppointment, createAppointment, createScheduleBlock, listAgenda, listAvailability, replaceAvailability, type Appointment } from "@/modules/scheduling/api";
+import type { Appointment } from "@/app/services";
 import { addDays, displayTime, formatRangeLabel, instant, localDate, rangeEnd, type AgendaView } from "@/modules/scheduling/application/calendar-rules";
 
 const weekdayLabels = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"];
 const defaultAvailability = weekdayLabels.map((_, index) => ({ dayOfWeek: index + 1, startsAt: "08:00", endsAt: "18:00", enabled: false }));
 
 export function AgendaWorkspace() {
+  const { patient, practice, scheduling } = useCliniServices();
   const queryClient = useQueryClient();
   const { selectedUnitId } = useCurrentUnit();
   const [date, setDate] = useState(localDate);
@@ -30,9 +30,9 @@ export function AgendaWorkspace() {
   const [fitIn, setFitIn] = useState(false);
   const [reason, setReason] = useState("");
   const [message, setMessage] = useState<string | null>(null);
-  const unitsQuery = useQuery({ queryKey: ["units"], queryFn: listUnits, retry: false });
-  const patientsQuery = useQuery({ queryKey: ["patients", "agenda"], queryFn: () => listPatients(), retry: false });
-  const availabilityQuery = useQuery({ queryKey: ["availability", unitId], queryFn: () => listAvailability(unitId), enabled: Boolean(unitId), retry: false });
+  const unitsQuery = useQuery({ queryKey: ["units"], queryFn: practice.listUnits, retry: false });
+  const patientsQuery = useQuery({ queryKey: ["patients", "agenda"], queryFn: () => patient.listPatients(), retry: false });
+  const availabilityQuery = useQuery({ queryKey: ["availability", unitId], queryFn: () => scheduling.listAvailability(unitId), enabled: Boolean(unitId), retry: false });
   const serverAvailability = useMemo(() => defaultAvailability.map((day) => {
       const saved = availabilityQuery.data?.find((hour) => hour.dayOfWeek === day.dayOfWeek);
       return saved ? { dayOfWeek: day.dayOfWeek, startsAt: saved.startsAt.slice(0, 5), endsAt: saved.endsAt.slice(0, 5), enabled: true } : day;
@@ -43,33 +43,33 @@ export function AgendaWorkspace() {
   const periodEnd = rangeEnd(date, view);
   const agendaQuery = useQuery({
     queryKey: ["agenda", date, periodEnd, unitId],
-    queryFn: () => listAgenda(instant(date, "00:00"), instant(periodEnd, "00:00"), unitId || undefined),
+    queryFn: () => scheduling.listAgenda(instant(date, "00:00"), instant(periodEnd, "00:00"), unitId || undefined),
     retry: false,
   });
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["agenda"] });
   const appointmentMutation = useMutation({
-    mutationFn: () => createAppointment({ unitId, patientId, startsAt: instant(date, start), endsAt: instant(date, end), type, fitIn, notes: type === "URGENT" ? "Atendimento de urgência" : undefined }),
+    mutationFn: () => scheduling.createAppointment({ unitId, patientId, startsAt: instant(date, start), endsAt: instant(date, end), type, fitIn, notes: type === "URGENT" ? "Atendimento de urgência" : undefined }),
     onSuccess: async () => { setMessage("Atendimento criado."); await refresh(); },
-    onError: (error) => setMessage(error instanceof ApiError ? error.message : "Não foi possível criar o atendimento."),
+    onError: (error) => setMessage(apiErrorMessage(error, "Não foi possível criar o atendimento.")),
   });
   const blockMutation = useMutation({
-    mutationFn: () => createScheduleBlock({ unitId: unitId || undefined, startsAt: instant(date, start), endsAt: instant(date, end), reason }),
+    mutationFn: () => scheduling.createScheduleBlock({ unitId: unitId || undefined, startsAt: instant(date, start), endsAt: instant(date, end), reason }),
     onSuccess: async () => { setMessage("Bloqueio criado."); setReason(""); await refresh(); },
-    onError: (error) => setMessage(error instanceof ApiError ? error.message : "Não foi possível criar o bloqueio."),
+    onError: (error) => setMessage(apiErrorMessage(error, "Não foi possível criar o bloqueio.")),
   });
   const availabilityMutation = useMutation({
-    mutationFn: () => replaceAvailability(unitId, availability.filter((day) => day.enabled).map(({ dayOfWeek, startsAt, endsAt }) => ({ dayOfWeek, startsAt: `${startsAt}:00`, endsAt: `${endsAt}:00` }))),
+    mutationFn: () => scheduling.replaceAvailability(unitId, availability.filter((day) => day.enabled).map(({ dayOfWeek, startsAt, endsAt }) => ({ dayOfWeek, startsAt: `${startsAt}:00`, endsAt: `${endsAt}:00` }))),
     onSuccess: async () => { setAvailabilityOverrides(null); setMessage("Funcionamento semanal salvo."); await queryClient.invalidateQueries({ queryKey: ["availability", unitId] }); },
-    onError: (error) => setMessage(error instanceof ApiError ? error.message : "Não foi possível salvar o funcionamento."),
+    onError: (error) => setMessage(apiErrorMessage(error, "Não foi possível salvar o funcionamento.")),
   });
   const cancelMutation = useMutation({
-    mutationFn: (appointmentId: string) => cancelAppointment(appointmentId),
+    mutationFn: (appointmentId: string) => scheduling.cancelAppointment(appointmentId),
     onSuccess: async () => { setMessage("Atendimento cancelado com histórico preservado."); await refresh(); },
-    onError: (error) => setMessage(error instanceof ApiError ? error.message : "Não foi possível cancelar."),
+    onError: (error) => setMessage(apiErrorMessage(error, "Não foi possível cancelar.")),
   });
   const busy = appointmentMutation.isPending || blockMutation.isPending || cancelMutation.isPending || availabilityMutation.isPending;
 
-  if (agendaQuery.isError && agendaQuery.error instanceof ApiError && agendaQuery.error.status === 401) {
+  if (agendaQuery.isError && isUnauthorized(agendaQuery.error)) {
     return <Card className="p-5"><h2 className="text-lg font-bold">Agenda</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">Entre para acessar a agenda.</p></Card>;
   }
   if (agendaQuery.isError) return <Card className="p-5"><p className="text-sm text-danger">Não foi possível carregar a agenda.</p></Card>;

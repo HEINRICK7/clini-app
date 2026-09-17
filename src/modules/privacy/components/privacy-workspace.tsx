@@ -3,41 +3,35 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 
+import { useCliniServices } from "@/app/service-container";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ApiError } from "@/lib/api/client";
-import { listPatients } from "@/modules/patient/api";
-import {
-  changePrivacyRequestStatus,
-  createPrivacyRequest,
-  listPrivacyRequests,
-  type PrivacyRequest,
-  type PrivacyRequestStatus,
-  type PrivacyRequestType,
-} from "@/modules/privacy/api";
+import { apiErrorMessage, isUnauthorized } from "@/lib/error-policy";
+import type { PrivacyRequest, PrivacyRequestStatus, PrivacyRequestType } from "@/app/services";
 
 export function PrivacyWorkspace() {
+  const { patient, privacy } = useCliniServices();
   const queryClient = useQueryClient();
   const [patientId, setPatientId] = useState("");
   const [type, setType] = useState<PrivacyRequestType>("ACCESS");
   const [details, setDetails] = useState("");
   const [resolution, setResolution] = useState("");
   const [message, setMessage] = useState<string | null>(null);
-  const patientsQuery = useQuery({ queryKey: ["patients", "privacy"], queryFn: () => listPatients(), retry: false });
-  const requestsQuery = useQuery({ queryKey: ["privacy-requests"], queryFn: () => listPrivacyRequests(), retry: false });
+  const patientsQuery = useQuery({ queryKey: ["patients", "privacy"], queryFn: () => patient.listPatients(), retry: false });
+  const requestsQuery = useQuery({ queryKey: ["privacy-requests"], queryFn: () => privacy.listPrivacyRequests(), retry: false });
   const patients = useMemo(() => (patientsQuery.data?.items ?? []).filter((patient) => patient.status === "ACTIVE"), [patientsQuery.data]);
-  const error = (value: unknown) => setMessage(value instanceof ApiError ? value.message : "Não foi possível concluir a operação de privacidade.");
+  const error = (value: unknown) => setMessage(apiErrorMessage(value, "Não foi possível concluir a operação de privacidade."));
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["privacy-requests"] });
   const createMutation = useMutation({
-    mutationFn: () => createPrivacyRequest({ patientId, type, details: details || undefined }),
+    mutationFn: () => privacy.createPrivacyRequest({ patientId, type, details: details || undefined }),
     onSuccess: async () => { setDetails(""); setMessage("Solicitação registrada para revisão do OWNER."); await refresh(); }, onError: error,
   });
   const statusMutation = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: PrivacyRequestStatus }) => changePrivacyRequestStatus(id, status, resolution),
+    mutationFn: ({ id, status }: { id: string; status: PrivacyRequestStatus }) => privacy.changePrivacyRequestStatus(id, status, resolution),
     onSuccess: async () => { setResolution(""); setMessage("Status atualizado e auditado."); await refresh(); }, onError: error,
   });
   const busy = createMutation.isPending || statusMutation.isPending;
-  if (requestsQuery.isError && requestsQuery.error instanceof ApiError && requestsQuery.error.status === 401) return <Card className="p-5"><h2 className="text-lg font-bold">Privacidade</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">Entre como dentista proprietário para acessar este fluxo.</p></Card>;
+  if (requestsQuery.isError && isUnauthorized(requestsQuery.error)) return <Card className="p-5"><h2 className="text-lg font-bold">Privacidade</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">Entre como dentista proprietário para acessar este fluxo.</p></Card>;
   return <section className="grid gap-4 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]"><Card className="p-5 sm:p-6"><p className="text-sm font-semibold text-primary">LGPD · somente OWNER</p><h2 className="mt-1 text-xl font-bold tracking-tight">Registrar solicitação</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">O pedido fica em revisão. Nenhum dado é apagado automaticamente.</p><div className="mt-5 grid gap-3"><FieldSelect label="Patient" value={patientId} onChange={setPatientId} options={patients.map((patient) => ({ value: patient.id, label: patient.fullName }))} /><FieldSelect label="Tipo" value={type} onChange={(value) => setType(value as PrivacyRequestType)} options={[{ value: "ACCESS", label: "Acesso/exportação" }, { value: "RECTIFICATION", label: "Correção" }, { value: "ANONYMIZATION_REVIEW", label: "Avaliar anonimização" }, { value: "DELETION_REVIEW", label: "Avaliar eliminação legal" }]} /><Field label="Detalhes do pedido" value={details} onChange={setDetails} placeholder="Opcional: contexto informado pelo paciente" /><Button disabled={busy || !patientId} onClick={() => createMutation.mutate()}>{createMutation.isPending ? "Registrando…" : "Registrar solicitação"}</Button>{message ? <p aria-live="polite" className="rounded-xl bg-cyan-50 px-3 py-2 text-sm leading-5 text-brand-navy">{message}</p> : null}</div></Card><Card className="p-5 sm:p-6"><div className="flex items-end justify-between gap-3"><div><p className="text-sm font-semibold text-primary">Histórico auditável</p><h2 className="mt-1 text-xl font-bold tracking-tight">Solicitações preservadas</h2></div><span className="rounded-full bg-surface-muted px-2.5 py-1 text-xs font-bold text-muted-foreground">{requestsQuery.data?.totalItems ?? 0}</span></div><Field label="Resolução / observação" value={resolution} onChange={setResolution} placeholder="Obrigatória para encerrar" /><div className="mt-4 grid gap-3">{requestsQuery.isPending ? <p className="text-sm text-muted-foreground">Carregando solicitações…</p> : null}{!requestsQuery.isPending && !requestsQuery.data?.items.length ? <p className="rounded-xl border border-dashed border-border px-4 py-5 text-sm text-muted-foreground">Nenhuma solicitação registrada.</p> : null}{requestsQuery.data?.items.map((request) => <RequestCard key={request.id} request={request} busy={busy} onStatus={(status) => statusMutation.mutate({ id: request.id, status })} />)}</div></Card></section>;
 }
 

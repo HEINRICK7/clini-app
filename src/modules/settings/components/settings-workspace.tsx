@@ -7,15 +7,16 @@ import { Bell, Building2, ChevronRight, CircleHelp, LogOut, SlidersHorizontal, U
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { UserAvatar } from "@/components/ui/user-avatar";
-import { logout } from "@/modules/auth/api";
+import { useCliniServices } from "@/app/service-container";
 import { useAuthSession, useCurrentUnit } from "@/modules/auth/components/auth-gate";
 
 export function SettingsWorkspace() {
   const router = useRouter();
+  const { auth } = useCliniServices();
   const session = useAuthSession();
   const { selectedUnitId } = useCurrentUnit();
   const logoutMutation = useMutation({
-    mutationFn: logout,
+    mutationFn: auth.logout,
     onSuccess: () => {
       router.replace("/login");
       router.refresh();

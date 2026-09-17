@@ -3,24 +3,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 
+import { useCliniServices } from "@/app/service-container";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ApiError } from "@/lib/api/client";
-import { listPatients } from "@/modules/patient/api";
-import { listUnits } from "@/modules/practice/api";
-import {
-  cancelFinancialEntry,
-  createFinancialEntry,
-  getFinancialSummary,
-  listFinancialEntries,
-  settleFinancialEntry,
-  type FinancialEntry,
-  type PaymentMethod,
-  type FinancialStatus,
-  type FinancialType,
-} from "@/modules/finance/api";
+import { apiErrorMessage, isUnauthorized } from "@/lib/error-policy";
+import type { FinancialEntry, PaymentMethod, FinancialStatus, FinancialType } from "@/app/services";
+import { formatMoney, parseMoney, today } from "@/modules/finance/application/money";
 
 export function FinanceWorkspace() {
+  const { finance, patient, practice } = useCliniServices();
   const queryClient = useQueryClient();
   const [type, setType] = useState<FinancialType>("INCOME");
   const [status, setStatus] = useState<FinancialStatus | "">("");
@@ -38,24 +29,24 @@ export function FinanceWorkspace() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("PIX");
   const [paymentReference, setPaymentReference] = useState("");
   const [entryPage, setEntryPage] = useState(0);
-  const unitsQuery = useQuery({ queryKey: ["units"], queryFn: listUnits, retry: false });
-  const patientsQuery = useQuery({ queryKey: ["patients", "finance"], queryFn: () => listPatients(), retry: false });
+  const unitsQuery = useQuery({ queryKey: ["units"], queryFn: practice.listUnits, retry: false });
+  const patientsQuery = useQuery({ queryKey: ["patients", "finance"], queryFn: () => patient.listPatients(), retry: false });
   const units = useMemo(() => (unitsQuery.data ?? []).filter((unit) => unit.status === "ACTIVE"), [unitsQuery.data]);
   const patients = useMemo(() => (patientsQuery.data?.items ?? []).filter((patient) => patient.status === "ACTIVE"), [patientsQuery.data]);
   const filters = { status: status || undefined, unitId: filterUnitId || undefined, patientId: filterPatientId || undefined };
-  const entriesQuery = useQuery({ queryKey: ["finance-entries", filters, entryPage], queryFn: () => listFinancialEntries({ ...filters, page: entryPage }), retry: false });
-  const summaryQuery = useQuery({ queryKey: ["finance-summary", filterUnitId], queryFn: () => getFinancialSummary({ unitId: filterUnitId || undefined }), retry: false });
+  const entriesQuery = useQuery({ queryKey: ["finance-entries", filters, entryPage], queryFn: () => finance.listFinancialEntries({ ...filters, page: entryPage }), retry: false });
+  const summaryQuery = useQuery({ queryKey: ["finance-summary", filterUnitId], queryFn: () => finance.getFinancialSummary({ unitId: filterUnitId || undefined }), retry: false });
   const refresh = async () => { await Promise.all([queryClient.invalidateQueries({ queryKey: ["finance-entries"] }), queryClient.invalidateQueries({ queryKey: ["finance-summary"] })]); };
-  const mutationError = (error: unknown) => setMessage(error instanceof ApiError ? error.message : "Não foi possível concluir a operação financeira.");
+  const mutationError = (error: unknown) => setMessage(apiErrorMessage(error, "Não foi possível concluir a operação financeira."));
   const createMutation = useMutation({
-    mutationFn: () => createFinancialEntry({ type, description, notes: notes || undefined, amountCents: parseMoney(amount), occurredOn, dueOn: dueOn || undefined, unitId: entryUnitId || undefined, patientId: entryPatientId || undefined }),
+    mutationFn: () => finance.createFinancialEntry({ type, description, notes: notes || undefined, amountCents: parseMoney(amount), occurredOn, dueOn: dueOn || undefined, unitId: entryUnitId || undefined, patientId: entryPatientId || undefined }),
     onSuccess: async () => { setDescription(""); setNotes(""); setAmount(""); setDueOn(""); setMessage("Lançamento criado em aberto."); await refresh(); }, onError: mutationError,
   });
-  const settleMutation = useMutation({ mutationFn: (id: string) => settleFinancialEntry(id, paymentMethod, paymentReference), onSuccess: async () => { setPaymentReference(""); setMessage("Lançamento liquidado."); await refresh(); }, onError: mutationError });
-  const cancelMutation = useMutation({ mutationFn: (entry: FinancialEntry) => cancelFinancialEntry(entry.id, cancelReason), onSuccess: async () => { setCancelReason(""); setMessage("Lançamento cancelado e preservado."); await refresh(); }, onError: mutationError });
+  const settleMutation = useMutation({ mutationFn: (id: string) => finance.settleFinancialEntry(id, paymentMethod, paymentReference), onSuccess: async () => { setPaymentReference(""); setMessage("Lançamento liquidado."); await refresh(); }, onError: mutationError });
+  const cancelMutation = useMutation({ mutationFn: (entry: FinancialEntry) => finance.cancelFinancialEntry(entry.id, cancelReason), onSuccess: async () => { setCancelReason(""); setMessage("Lançamento cancelado e preservado."); await refresh(); }, onError: mutationError });
   const busy = createMutation.isPending || settleMutation.isPending || cancelMutation.isPending;
 
-  if (entriesQuery.isError && entriesQuery.error instanceof ApiError && entriesQuery.error.status === 401) {
+  if (entriesQuery.isError && isUnauthorized(entriesQuery.error)) {
     return <Card className="p-5"><h2 className="text-lg font-bold">Financeiro</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">Entre como dentista proprietário para acessar o financeiro.</p></Card>;
   }
   if (entriesQuery.isError) return <Card className="p-5"><p className="text-sm text-danger">Não foi possível carregar o financeiro.</p></Card>;
@@ -91,6 +82,3 @@ function FinancialEntryCard({ entry, busy, cancelReason, onCancelReason, onCance
 
 function FinanceSelect({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: { value: string; label: string }[] }) { return <label className="grid gap-1.5 text-sm font-semibold"><span>{label}</span><select className="min-h-12 rounded-xl border border-border bg-surface px-3 text-base font-normal" onChange={(event) => onChange(event.target.value)} value={value}>{options.some((option) => option.value === "") ? null : <option value="">Selecione</option>}{options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>; }
 function FinanceField({ label, value, onChange, placeholder, type = "text" }: { label: string; value: string; onChange: (value: string) => void; placeholder?: string; type?: string }) { return <label className="grid gap-1.5 text-sm font-semibold"><span>{label}</span><input className="min-h-11 rounded-xl border border-border bg-surface px-3 text-sm font-normal" onChange={(event) => onChange(event.target.value)} placeholder={placeholder} type={type} value={value} /></label>; }
-function parseMoney(value: string) { const parsed = Number(value.trim().replace(/\./g, "").replace(",", ".")); return Number.isFinite(parsed) && parsed >= 0 ? Math.round(parsed * 100) : 0; }
-function formatMoney(cents: number) { return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }); }
-function today() { return new Date().toISOString().slice(0, 10); }

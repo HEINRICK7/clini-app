@@ -3,16 +3,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
+import { useCliniServices } from "@/app/service-container";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ApiError } from "@/lib/api/client";
-import {
-  createUnit,
-  deactivateUnit,
-  listUnits,
-  makeUnitPrimary,
-  type UnitDraft,
-} from "@/modules/practice/api";
+import { apiErrorMessage, isUnauthorized } from "@/lib/error-policy";
+import type { UnitDraft } from "@/app/services";
 
 const initialDraft: UnitDraft = {
   name: "",
@@ -23,17 +18,18 @@ const initialDraft: UnitDraft = {
 };
 
 export function UnitWorkspace() {
+  const { practice } = useCliniServices();
   const queryClient = useQueryClient();
   const [draft, setDraft] = useState<UnitDraft>(initialDraft);
   const [formMessage, setFormMessage] = useState<string | null>(null);
   const unitsQuery = useQuery({
     queryKey: ["units"],
-    queryFn: listUnits,
+    queryFn: practice.listUnits,
     retry: false,
   });
 
   const createMutation = useMutation({
-    mutationFn: createUnit,
+    mutationFn: practice.createUnit,
     onSuccess: async () => {
       setDraft(initialDraft);
       setFormMessage("Unidade adicionada com sucesso.");
@@ -43,13 +39,13 @@ export function UnitWorkspace() {
   });
 
   const primaryMutation = useMutation({
-    mutationFn: makeUnitPrimary,
+    mutationFn: practice.makeUnitPrimary,
     onSuccess: async () => queryClient.invalidateQueries({ queryKey: ["units"] }),
     onError: (error) => setFormMessage(getErrorMessage(error)),
   });
 
   const deactivateMutation = useMutation({
-    mutationFn: deactivateUnit,
+    mutationFn: practice.deactivateUnit,
     onSuccess: async () => queryClient.invalidateQueries({ queryKey: ["units"] }),
     onError: (error) => setFormMessage(getErrorMessage(error)),
   });
@@ -69,7 +65,7 @@ export function UnitWorkspace() {
     return <Card className="p-5"><p className="text-sm text-muted-foreground">Carregando suas unidades…</p></Card>;
   }
 
-  if (unitsQuery.isError && unitsQuery.error instanceof ApiError && unitsQuery.error.status === 401) {
+  if (unitsQuery.isError && isUnauthorized(unitsQuery.error)) {
     return (
       <Card className="p-5">
         <h2 className="text-lg font-bold">Entre para configurar seus locais</h2>
@@ -166,5 +162,5 @@ function Field({ label, required = false, value, onChange }: { label: string; re
 }
 
 function getErrorMessage(error: unknown) {
-  return error instanceof ApiError ? error.message : "Não foi possível concluir a operação.";
+  return apiErrorMessage(error, "Não foi possível concluir a operação.");
 }

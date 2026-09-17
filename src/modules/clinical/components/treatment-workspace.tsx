@@ -3,15 +3,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 
+import { useCliniServices } from "@/app/service-container";
+import type { CatalogProcedure, Treatment } from "@/app/services";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ApiError } from "@/lib/api/client";
-import { listPatients } from "@/modules/patient/api";
-import { listUnits } from "@/modules/practice/api";
-import { listCatalogProcedures, type CatalogProcedure } from "@/modules/catalog/api";
-import { addPlannedProcedure, changeTreatmentStatus, closePerformedProcedure, createPerformedProcedure, createTreatment, listPerformedProcedures, listTreatments, type Treatment } from "@/modules/clinical/treatment-api";
+import { apiErrorMessage, isUnauthorized } from "@/lib/error-policy";
 
 export function TreatmentWorkspace() {
+  const { catalog, clinicalTreatments, patient: patientService, practice } = useCliniServices();
   const queryClient = useQueryClient();
   const [patientId, setPatientId] = useState("");
   const [selectedTreatmentId, setSelectedTreatmentId] = useState("");
@@ -24,24 +23,24 @@ export function TreatmentWorkspace() {
   const [performedContent, setPerformedContent] = useState("");
   const [performedPlannedId, setPerformedPlannedId] = useState("");
   const [message, setMessage] = useState<string | null>(null);
-  const patientsQuery = useQuery({ queryKey: ["patients", "treatments"], queryFn: () => listPatients(), retry: false });
-  const unitsQuery = useQuery({ queryKey: ["units"], queryFn: listUnits, retry: false });
+  const patientsQuery = useQuery({ queryKey: ["patients", "treatments"], queryFn: () => patientService.listPatients(), retry: false });
+  const unitsQuery = useQuery({ queryKey: ["units"], queryFn: practice.listUnits, retry: false });
   const patients = useMemo(() => (patientsQuery.data?.items ?? []).filter((patient) => patient.status === "ACTIVE"), [patientsQuery.data]);
   const selectedPatient = patients.find((patient) => patient.id === patientId);
-  const catalogQuery = useQuery({ queryKey: ["catalog-procedures", "treatment", selectedPatient?.currentUnitId], queryFn: () => listCatalogProcedures({ unitId: selectedPatient?.currentUnitId }), enabled: Boolean(selectedPatient?.currentUnitId), retry: false });
-  const treatmentsQuery = useQuery({ queryKey: ["treatments", patientId], queryFn: () => listTreatments(patientId), enabled: Boolean(patientId), retry: false });
-  const performedQuery = useQuery({ queryKey: ["performed-procedures", selectedTreatmentId], queryFn: () => listPerformedProcedures(selectedTreatmentId), enabled: Boolean(selectedTreatmentId), retry: false });
+  const catalogQuery = useQuery({ queryKey: ["catalog-procedures", "treatment", selectedPatient?.currentUnitId], queryFn: () => catalog.listCatalogProcedures({ unitId: selectedPatient?.currentUnitId }), enabled: Boolean(selectedPatient?.currentUnitId), retry: false });
+  const treatmentsQuery = useQuery({ queryKey: ["treatments", patientId], queryFn: () => clinicalTreatments.listTreatments(patientId), enabled: Boolean(patientId), retry: false });
+  const performedQuery = useQuery({ queryKey: ["performed-procedures", selectedTreatmentId], queryFn: () => clinicalTreatments.listPerformedProcedures(selectedTreatmentId), enabled: Boolean(selectedTreatmentId), retry: false });
   const refreshTreatments = () => queryClient.invalidateQueries({ queryKey: ["treatments", patientId] });
   const refreshPerformed = () => queryClient.invalidateQueries({ queryKey: ["performed-procedures", selectedTreatmentId] });
-  const mutationError = (error: unknown, fallback: string) => setMessage(error instanceof ApiError ? error.message : fallback);
-  const createMutation = useMutation({ mutationFn: () => createTreatment({ patientId, name, notes: notes || undefined }), onSuccess: async (treatment) => { setName(""); setNotes(""); setSelectedTreatmentId(treatment.id); setMessage("Tratamento criado como planejado."); await refreshTreatments(); }, onError: (error) => mutationError(error, "Não foi possível criar o tratamento.") });
-  const statusMutation = useMutation({ mutationFn: ({ id, status }: { id: string; status: Treatment["status"] }) => changeTreatmentStatus(id, status), onSuccess: async () => { setMessage("Status do tratamento atualizado."); await refreshTreatments(); }, onError: (error) => mutationError(error, "Não foi possível atualizar o tratamento.") });
-  const plannedMutation = useMutation({ mutationFn: () => addPlannedProcedure(selectedTreatmentId, { name: plannedCatalogId ? undefined : plannedName, catalogProcedureId: plannedCatalogId || undefined, notes: plannedNotes || undefined, expectedUnitId: selectedPatient?.currentUnitId }), onSuccess: async () => { setPlannedName(""); setPlannedNotes(""); setPlannedCatalogId(""); setMessage("Procedimento planejado adicionado."); await refreshTreatments(); }, onError: (error) => mutationError(error, "Não foi possível adicionar o procedimento planejado.") });
-  const performedMutation = useMutation({ mutationFn: () => createPerformedProcedure(selectedTreatmentId, { plannedProcedureId: performedPlannedId || undefined, unitId: selectedPatient?.currentUnitId ?? "", name: performedName, content: performedContent }), onSuccess: async () => { setPerformedName(""); setPerformedContent(""); setPerformedPlannedId(""); setMessage("Procedimento realizado salvo como rascunho."); await refreshPerformed(); }, onError: (error) => mutationError(error, "Não foi possível registrar o procedimento realizado.") });
-  const closePerformedMutation = useMutation({ mutationFn: closePerformedProcedure, onSuccess: async () => { setMessage("Procedimento realizado fechado e preservado."); await refreshPerformed(); }, onError: (error) => mutationError(error, "Não foi possível fechar o procedimento.") });
+  const mutationError = (error: unknown, fallback: string) => setMessage(apiErrorMessage(error, fallback));
+  const createMutation = useMutation({ mutationFn: () => clinicalTreatments.createTreatment({ patientId, name, notes: notes || undefined }), onSuccess: async (treatment) => { setName(""); setNotes(""); setSelectedTreatmentId(treatment.id); setMessage("Tratamento criado como planejado."); await refreshTreatments(); }, onError: (error) => mutationError(error, "Não foi possível criar o tratamento.") });
+  const statusMutation = useMutation({ mutationFn: ({ id, status }: { id: string; status: Treatment["status"] }) => clinicalTreatments.changeTreatmentStatus(id, status), onSuccess: async () => { setMessage("Status do tratamento atualizado."); await refreshTreatments(); }, onError: (error) => mutationError(error, "Não foi possível atualizar o tratamento.") });
+  const plannedMutation = useMutation({ mutationFn: () => clinicalTreatments.addPlannedProcedure(selectedTreatmentId, { name: plannedCatalogId ? undefined : plannedName, catalogProcedureId: plannedCatalogId || undefined, notes: plannedNotes || undefined, expectedUnitId: selectedPatient?.currentUnitId }), onSuccess: async () => { setPlannedName(""); setPlannedNotes(""); setPlannedCatalogId(""); setMessage("Procedimento planejado adicionado."); await refreshTreatments(); }, onError: (error) => mutationError(error, "Não foi possível adicionar o procedimento planejado.") });
+  const performedMutation = useMutation({ mutationFn: () => clinicalTreatments.createPerformedProcedure(selectedTreatmentId, { plannedProcedureId: performedPlannedId || undefined, unitId: selectedPatient?.currentUnitId ?? "", name: performedName, content: performedContent }), onSuccess: async () => { setPerformedName(""); setPerformedContent(""); setPerformedPlannedId(""); setMessage("Procedimento realizado salvo como rascunho."); await refreshPerformed(); }, onError: (error) => mutationError(error, "Não foi possível registrar o procedimento realizado.") });
+  const closePerformedMutation = useMutation({ mutationFn: clinicalTreatments.closePerformedProcedure, onSuccess: async () => { setMessage("Procedimento realizado fechado e preservado."); await refreshPerformed(); }, onError: (error) => mutationError(error, "Não foi possível fechar o procedimento.") });
   const busy = createMutation.isPending || statusMutation.isPending || plannedMutation.isPending || performedMutation.isPending || closePerformedMutation.isPending;
 
-  if (treatmentsQuery.isError && treatmentsQuery.error instanceof ApiError && treatmentsQuery.error.status === 401) return <Card className="p-5"><h2 className="text-lg font-bold">Tratamentos</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">Entre para acessar os tratamentos.</p></Card>;
+  if (treatmentsQuery.isError && isUnauthorized(treatmentsQuery.error)) return <Card className="p-5"><h2 className="text-lg font-bold">Tratamentos</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">Entre para acessar os tratamentos.</p></Card>;
   if (treatmentsQuery.isError) return <Card className="p-5"><p className="text-sm text-danger">Não foi possível carregar os tratamentos.</p></Card>;
   const treatments = treatmentsQuery.data?.items ?? [];
   const activeUnits = (unitsQuery.data ?? []).filter((unit) => unit.status === "ACTIVE");

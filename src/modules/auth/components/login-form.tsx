@@ -6,12 +6,13 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Eye, EyeOff } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { ApiError } from "@/lib/api/client";
+import { useCliniServices } from "@/app/service-container";
+import { apiErrorMessage } from "@/lib/error-policy";
 import { authenticate, destinationAfterLogin } from "@/modules/auth/application/authentication";
-import { authGateway } from "@/modules/auth/infrastructure/auth-gateway";
 
 export function LoginForm() {
   const router = useRouter();
+  const { auth } = useCliniServices();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -24,14 +25,12 @@ export function LoginForm() {
     setIsSubmitting(true);
 
     try {
-      const session = await authenticate(authGateway, { email, password });
+      const session = await authenticate(auth, { email, password });
       router.push(destinationAfterLogin(session));
       router.refresh();
     } catch (error) {
       setErrorMessage(
-        error instanceof ApiError
-          ? error.message
-          : "Não foi possível entrar agora. Tente novamente.",
+        apiErrorMessage(error, "Não foi possível entrar agora. Tente novamente."),
       );
     } finally {
       setIsSubmitting(false);

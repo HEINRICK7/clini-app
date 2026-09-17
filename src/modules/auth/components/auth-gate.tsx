@@ -8,9 +8,9 @@ import { Bell, LogOut } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
 import { UserAvatar } from "@/components/ui/user-avatar";
-import { ApiError } from "@/lib/api/client";
+import { useCliniServices } from "@/app/service-container";
+import { isUnauthorized } from "@/lib/error-policy";
 import type { AuthSession } from "@/modules/auth/application/contracts";
-import { authGateway } from "@/modules/auth/infrastructure/auth-gateway";
 
 const AuthContext = createContext<AuthSession | null>(null);
 type CurrentUnitContextValue = {
@@ -21,12 +21,13 @@ const CurrentUnitContext = createContext<CurrentUnitContextValue | null>(null);
 
 export function AuthGate({ children }: Readonly<{ children: ReactNode }>) {
   const router = useRouter();
-  const sessionQuery = useQuery({ queryKey: ["auth-session"], queryFn: authGateway.getCurrentSession, retry: false });
+  const { auth } = useCliniServices();
+  const sessionQuery = useQuery({ queryKey: ["auth-session"], queryFn: auth.getCurrentSession, retry: false });
   useEffect(() => {
-    if (sessionQuery.error instanceof ApiError && sessionQuery.error.status === 401) router.replace("/login");
+    if (isUnauthorized(sessionQuery.error)) router.replace("/login");
   }, [router, sessionQuery.error]);
 
-  if (sessionQuery.isPending || (sessionQuery.error instanceof ApiError && sessionQuery.error.status === 401)) {
+  if (sessionQuery.isPending || isUnauthorized(sessionQuery.error)) {
     return <Card className="mx-auto mt-10 max-w-md p-6"><p className="text-sm text-muted-foreground">Validando sua sessão…</p></Card>;
   }
   if (sessionQuery.isError || !sessionQuery.data) {
@@ -71,6 +72,7 @@ export function useCurrentUnit() {
 export function SessionHeader() {
   const router = useRouter();
   const session = useAuthSession();
-  const logoutMutation = useMutation({ mutationFn: authGateway.logout, onSuccess: () => { router.replace("/login"); router.refresh(); } });
+  const { auth } = useCliniServices();
+  const logoutMutation = useMutation({ mutationFn: auth.logout, onSuccess: () => { router.replace("/login"); router.refresh(); } });
   return <div className="flex items-center gap-2"><Link aria-label="Abrir notificações" className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full text-brand-navy transition-colors hover:bg-surface-muted" href="/more"><Bell aria-hidden="true" className="h-5 w-5" /></Link><UserAvatar name={session.name} seed={session.email} size="sm" /><button aria-label="Sair da conta" className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-xl text-xs font-semibold text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground disabled:opacity-60 sm:min-w-0 sm:px-3" disabled={logoutMutation.isPending} onClick={() => logoutMutation.mutate()} type="button"><LogOut aria-hidden="true" className="h-4 w-4" /><span className="hidden sm:inline">{logoutMutation.isPending ? "Saindo…" : "Sair"}</span></button></div>;
 }

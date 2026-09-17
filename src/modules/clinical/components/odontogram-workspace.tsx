@@ -3,21 +3,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 
+import { useCliniServices } from "@/app/service-container";
+import type { OdontogramDentition, OdontogramFindingType, OdontogramSurface, OdontogramToothInput, OdontogramToothStatus } from "@/app/services";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ApiError } from "@/lib/api/client";
-import { listPatients } from "@/modules/patient/api";
-import {
-  archiveOdontogram,
-  createOdontogram,
-  createOdontogramVersion,
-  getOdontogram,
-  type OdontogramDentition,
-  type OdontogramFindingType,
-  type OdontogramSurface,
-  type OdontogramToothInput,
-  type OdontogramToothStatus,
-} from "@/modules/clinical/odontogram-api";
+import { apiErrorMessage, isApiError } from "@/lib/error-policy";
 
 const dentitions: { value: OdontogramDentition; label: string }[] = [
   { value: "PERMANENT", label: "Permanente" },
@@ -54,6 +44,7 @@ const surfaces: { value: OdontogramSurface; label: string }[] = [
 ];
 
 export function OdontogramWorkspace() {
+  const { clinicalOdontograms, patient: patientService } = useCliniServices();
   const queryClient = useQueryClient();
   const [patientId, setPatientId] = useState("");
   const [teeth, setTeeth] = useState<OdontogramToothInput[]>([]);
@@ -67,22 +58,22 @@ export function OdontogramWorkspace() {
   const [reason, setReason] = useState("");
   const [draftTouched, setDraftTouched] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const patientsQuery = useQuery({ queryKey: ["patients", "odontogram"], queryFn: () => listPatients(), retry: false });
+  const patientsQuery = useQuery({ queryKey: ["patients", "odontogram"], queryFn: () => patientService.listPatients(), retry: false });
   const patients = useMemo(() => (patientsQuery.data?.items ?? []).filter((patient) => patient.status === "ACTIVE"), [patientsQuery.data]);
   const patient = patients.find((item) => item.id === patientId);
-  const odontogramQuery = useQuery({ queryKey: ["odontogram", patientId], queryFn: () => getOdontogram(patientId), enabled: Boolean(patientId), retry: false });
+  const odontogramQuery = useQuery({ queryKey: ["odontogram", patientId], queryFn: () => clinicalOdontograms.getOdontogram(patientId), enabled: Boolean(patientId), retry: false });
   const odontogram = odontogramQuery.data;
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["odontogram", patientId] });
-  const mutationError = (error: unknown) => setMessage(error instanceof ApiError ? error.message : "Não foi possível salvar o odontograma.");
+  const mutationError = (error: unknown) => setMessage(apiErrorMessage(error, "Não foi possível salvar o odontograma."));
   const persistedTeeth: OdontogramToothInput[] = odontogram?.teeth.map((tooth) => ({ number: tooth.number, dentition: tooth.dentition, status: tooth.status, notes: tooth.notes ?? undefined, findings: tooth.findings.map((item) => ({ type: item.type, surface: item.surface ?? undefined, notes: item.notes ?? undefined })) })) ?? [];
   const draftTeeth = draftTouched ? teeth : persistedTeeth;
   const saveMutation = useMutation({
-    mutationFn: () => odontogram ? createOdontogramVersion(odontogram.id, { unitId: patient?.currentUnitId ?? "", reason: reason || undefined, teeth: draftTeeth }) : createOdontogram({ patientId, unitId: patient?.currentUnitId ?? "", reason: reason || undefined, teeth: draftTeeth }),
+    mutationFn: () => odontogram ? clinicalOdontograms.createOdontogramVersion(odontogram.id, { unitId: patient?.currentUnitId ?? "", reason: reason || undefined, teeth: draftTeeth }) : clinicalOdontograms.createOdontogram({ patientId, unitId: patient?.currentUnitId ?? "", reason: reason || undefined, teeth: draftTeeth }),
     onSuccess: async (saved) => { setReason(""); setDraftTouched(false); setMessage(`Versão ${saved.version} do odontograma salva.`); await refresh(); },
     onError: mutationError,
   });
-  const archiveMutation = useMutation({ mutationFn: () => archiveOdontogram(odontogram?.id ?? ""), onSuccess: async () => { setMessage("Odontograma arquivado sem apagar o histórico."); await refresh(); }, onError: mutationError });
+  const archiveMutation = useMutation({ mutationFn: () => clinicalOdontograms.archiveOdontogram(odontogram?.id ?? ""), onSuccess: async () => { setMessage("Odontograma arquivado sem apagar o histórico."); await refresh(); }, onError: mutationError });
 
   function addTooth() {
     const toothNumber = Number(number);
@@ -93,7 +84,7 @@ export function OdontogramWorkspace() {
     setNumber(""); setToothNotes(""); setFindingNotes(""); setMessage("Dente preparado para a próxima versão.");
   }
 
-  if (odontogramQuery.isError && !(odontogramQuery.error instanceof ApiError && odontogramQuery.error.status === 404)) return <Card className="p-5"><p className="text-sm text-danger">Não foi possível carregar o odontograma.</p></Card>;
+  if (odontogramQuery.isError && !(isApiError(odontogramQuery.error) && odontogramQuery.error.status === 404)) return <Card className="p-5"><p className="text-sm text-danger">Não foi possível carregar o odontograma.</p></Card>;
   const archived = odontogram?.status === "ARCHIVED";
   return <section className="grid gap-4 lg:grid-cols-[minmax(0,0.75fr)_minmax(0,1.25fr)]"><Card className="p-5 sm:p-6"><p className="text-sm font-semibold text-primary">Registro odontológico</p><h2 className="mt-1 text-xl font-bold tracking-tight">Odontograma</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">Registre a condição dos dentes e os achados por versão, preservando o histórico clínico.</p><div className="mt-5 grid gap-3"><ClinicalSelect label="Paciente" value={patientId} onChange={(value) => { setPatientId(value); setDraftTouched(false); setTeeth([]); setMessage(null); }} options={patients.map((item) => ({ value: item.id, label: item.fullName }))} /><ClinicalField label="Motivo da atualização" value={reason} onChange={setReason} placeholder="Ex.: avaliação inicial" /><Button disabled={!patientId || archived || saveMutation.isPending} onClick={() => saveMutation.mutate()}>{saveMutation.isPending ? "Salvando…" : odontogram ? `Salvar versão ${odontogram.version + 1}` : "Criar odontograma"}</Button>{archived ? <Button disabled variant="outline">Odontograma arquivado</Button> : null}{odontogram && !archived ? <Button disabled={archiveMutation.isPending} onClick={() => archiveMutation.mutate()} size="sm" variant="outline">Arquivar sem excluir</Button> : null}{message ? <p aria-live="polite" className="rounded-xl bg-cyan-50 px-3 py-2 text-sm leading-5 text-brand-navy">{message}</p> : null}</div></Card><Card className="p-5 sm:p-6"><div className="flex items-end justify-between gap-3"><div><p className="text-sm font-semibold text-primary">Mapa dentário</p><h2 className="mt-1 text-xl font-bold tracking-tight">Dentes e achados</h2></div><span className="rounded-full bg-surface-muted px-2.5 py-1 text-xs font-bold text-muted-foreground">{draftTeeth.length} registrados</span></div><div className="mt-4 grid gap-3 sm:grid-cols-2"><ClinicalField label="Número FDI" value={number} onChange={setNumber} placeholder="Ex.: 16" /><ClinicalSelect label="Dentição" value={dentition} onChange={(value) => setDentition(value as OdontogramDentition)} options={dentitions} /><ClinicalSelect label="Condição" value={status} onChange={(value) => setStatus(value as OdontogramToothStatus)} options={toothStatuses} /><ClinicalSelect label="Achado" value={finding} onChange={(value) => setFinding(value as OdontogramFindingType)} options={findingTypes} /><ClinicalSelect label="Superfície (opcional)" value={surface} onChange={(value) => setSurface(value as OdontogramSurface | "")} options={surfaces} /><ClinicalField label="Observação do dente" value={toothNotes} onChange={setToothNotes} placeholder="Opcional" /><ClinicalField label="Observação do achado" value={findingNotes} onChange={setFindingNotes} placeholder="Opcional" /></div><Button className="mt-3 w-full sm:w-auto" disabled={archived} onClick={addTooth} size="sm" variant="outline">Adicionar ou atualizar dente</Button><div className="mt-4 grid gap-2 sm:grid-cols-2">{draftTeeth.map((tooth) => <article className="rounded-xl border border-border bg-surface-muted p-3" key={`${tooth.dentition}-${tooth.number}`}><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-wide text-primary">Dente {tooth.number} · {tooth.dentition === "PERMANENT" ? "permanente" : "decíduo"}</p><p className="mt-1 font-semibold">{toothStatuses.find((item) => item.value === tooth.status)?.label}</p></div><span className="text-xs text-muted-foreground">{tooth.findings.length} achado(s)</span></div>{tooth.notes ? <p className="mt-2 text-xs leading-5 text-muted-foreground">{tooth.notes}</p> : null}{tooth.findings.length ? <ul className="mt-2 grid gap-1 text-xs text-muted-foreground">{tooth.findings.map((item) => <li key={`${item.type}-${item.surface ?? "general"}`}>{findingTypes.find((option) => option.value === item.type)?.label}{item.surface ? ` · ${surfaces.find((option) => option.value === item.surface)?.label}` : ""}</li>)}</ul> : null}</article>)}</div>{!draftTeeth.length ? <p className="mt-4 rounded-xl border border-dashed border-border px-4 py-5 text-sm text-muted-foreground">Nenhum dente registrado nesta versão. Isso é válido para iniciar o prontuário e completar depois.</p> : null}</Card></section>;
 }

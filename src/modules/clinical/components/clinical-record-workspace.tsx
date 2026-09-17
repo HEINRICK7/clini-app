@@ -3,14 +3,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 
+import { useCliniServices } from "@/app/service-container";
+import type { ClinicalEvolution } from "@/app/services";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ApiError } from "@/lib/api/client";
-import { listPatients } from "@/modules/patient/api";
-import { listUnits } from "@/modules/practice/api";
-import { closeClinicalEvolution, createClinicalEvolution, listClinicalEvolutions, rectifyClinicalEvolution, type ClinicalEvolution } from "@/modules/clinical/api";
+import { apiErrorMessage, isUnauthorized } from "@/lib/error-policy";
 
 export function ClinicalRecordWorkspace() {
+  const { clinical, patient, practice } = useCliniServices();
   const queryClient = useQueryClient();
   const [patientId, setPatientId] = useState("");
   const [evolutionPage, setEvolutionPage] = useState(0);
@@ -19,35 +19,35 @@ export function ClinicalRecordWorkspace() {
   const [rectificationContent, setRectificationContent] = useState("");
   const [rectificationReason, setRectificationReason] = useState("");
   const [message, setMessage] = useState<string | null>(null);
-  const unitsQuery = useQuery({ queryKey: ["units"], queryFn: listUnits, retry: false });
-  const patientsQuery = useQuery({ queryKey: ["patients", "clinical"], queryFn: () => listPatients(), retry: false });
+  const unitsQuery = useQuery({ queryKey: ["units"], queryFn: practice.listUnits, retry: false });
+  const patientsQuery = useQuery({ queryKey: ["patients", "clinical"], queryFn: () => patient.listPatients(), retry: false });
   const activeUnits = useMemo(() => (unitsQuery.data ?? []).filter((unit) => unit.status === "ACTIVE"), [unitsQuery.data]);
   const activePatients = useMemo(() => (patientsQuery.data?.items ?? []).filter((patient) => patient.status === "ACTIVE"), [patientsQuery.data]);
   const evolutionsQuery = useQuery({
     queryKey: ["clinical-evolutions", patientId, evolutionPage],
-    queryFn: () => listClinicalEvolutions(patientId, evolutionPage),
+    queryFn: () => clinical.listClinicalEvolutions(patientId, evolutionPage),
     enabled: Boolean(patientId),
     retry: false,
   });
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["clinical-evolutions", patientId] });
   const createMutation = useMutation({
-    mutationFn: () => createClinicalEvolution({ patientId, unitId, content }),
+    mutationFn: () => clinical.createClinicalEvolution({ patientId, unitId, content }),
     onSuccess: async () => { setContent(""); setMessage("Evolução salva como rascunho."); await refresh(); },
-    onError: (error) => setMessage(error instanceof ApiError ? error.message : "Não foi possível salvar a evolução."),
+    onError: (error) => setMessage(apiErrorMessage(error, "Não foi possível salvar a evolução.")),
   });
   const closeMutation = useMutation({
-    mutationFn: closeClinicalEvolution,
+    mutationFn: clinical.closeClinicalEvolution,
     onSuccess: async () => { setMessage("Evolução fechada e protegida contra edição direta."); await refresh(); },
-    onError: (error) => setMessage(error instanceof ApiError ? error.message : "Não foi possível fechar a evolução."),
+    onError: (error) => setMessage(apiErrorMessage(error, "Não foi possível fechar a evolução.")),
   });
   const rectifyMutation = useMutation({
-    mutationFn: ({ evolutionId, nextContent, reason }: { evolutionId: string; nextContent: string; reason: string }) => rectifyClinicalEvolution(evolutionId, nextContent, reason),
+    mutationFn: ({ evolutionId, nextContent, reason }: { evolutionId: string; nextContent: string; reason: string }) => clinical.rectifyClinicalEvolution(evolutionId, nextContent, reason),
     onSuccess: async () => { setRectificationContent(""); setRectificationReason(""); setMessage("Retificação registrada em nova versão."); await refresh(); },
-    onError: (error) => setMessage(error instanceof ApiError ? error.message : "Não foi possível registrar a retificação."),
+    onError: (error) => setMessage(apiErrorMessage(error, "Não foi possível registrar a retificação.")),
   });
   const busy = createMutation.isPending || closeMutation.isPending || rectifyMutation.isPending;
 
-  if (evolutionsQuery.isError && evolutionsQuery.error instanceof ApiError && evolutionsQuery.error.status === 401) {
+  if (evolutionsQuery.isError && isUnauthorized(evolutionsQuery.error)) {
     return <Card className="p-5"><h2 className="text-lg font-bold">Prontuário clínico</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">Entre para acessar o prontuário.</p></Card>;
   }
   if (evolutionsQuery.isError) return <Card className="p-5"><p className="text-sm text-danger">Não foi possível carregar as evoluções clínicas.</p></Card>;

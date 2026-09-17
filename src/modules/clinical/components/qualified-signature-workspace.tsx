@@ -3,31 +3,24 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 
+import { useCliniServices } from "@/app/service-container";
+import type { QualifiedSignatureRequest } from "@/app/services";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ApiError } from "@/lib/api/client";
-import { listPatients } from "@/modules/patient/api";
-import { listClinicalDocuments } from "@/modules/clinical/document-api";
-import {
-  cancelQualifiedSignature,
-  getQualifiedSignatureProviderStatus,
-  listQualifiedSignatures,
-  requestQualifiedSignature,
-  submitQualifiedSignature,
-  type QualifiedSignatureRequest,
-} from "@/modules/clinical/signature-api";
+import { apiErrorMessage } from "@/lib/error-policy";
 
 export function QualifiedSignatureWorkspace() {
+  const { clinicalDocuments, clinicalSignatures, patient: patientService } = useCliniServices();
   const queryClient = useQueryClient();
   const [patientId, setPatientId] = useState("");
   const [documentId, setDocumentId] = useState("");
   const [cancelReason, setCancelReason] = useState("");
   const [message, setMessage] = useState<string | null>(null);
-  const patientsQuery = useQuery({ queryKey: ["patients", "qualified-signatures"], queryFn: () => listPatients(), retry: false });
-  const providerStatusQuery = useQuery({ queryKey: ["qualified-signature-provider-status"], queryFn: getQualifiedSignatureProviderStatus, retry: false });
+  const patientsQuery = useQuery({ queryKey: ["patients", "qualified-signatures"], queryFn: () => patientService.listPatients(), retry: false });
+  const providerStatusQuery = useQuery({ queryKey: ["qualified-signature-provider-status"], queryFn: clinicalSignatures.getQualifiedSignatureProviderStatus, retry: false });
   const patients = useMemo(() => (patientsQuery.data?.items ?? []).filter((patient) => patient.status === "ACTIVE"), [patientsQuery.data]);
-  const documentsQuery = useQuery({ queryKey: ["clinical-documents", "qualified-signatures", patientId], queryFn: () => listClinicalDocuments(patientId), enabled: Boolean(patientId), retry: false });
-  const signaturesQuery = useQuery({ queryKey: ["qualified-signatures", patientId], queryFn: () => listQualifiedSignatures(patientId), enabled: Boolean(patientId), retry: false });
+  const documentsQuery = useQuery({ queryKey: ["clinical-documents", "qualified-signatures", patientId], queryFn: () => clinicalDocuments.listClinicalDocuments(patientId), enabled: Boolean(patientId), retry: false });
+  const signaturesQuery = useQuery({ queryKey: ["qualified-signatures", patientId], queryFn: () => clinicalSignatures.listQualifiedSignatures(patientId), enabled: Boolean(patientId), retry: false });
   const documents = documentsQuery.data?.items ?? [];
   const signatures = signaturesQuery.data ?? [];
   const selectedDocument = documents.find((document) => document.id === documentId);
@@ -37,19 +30,19 @@ export function QualifiedSignatureWorkspace() {
     void queryClient.invalidateQueries({ queryKey: ["qualified-signatures", patientId] });
     void queryClient.invalidateQueries({ queryKey: ["clinical-documents", "qualified-signatures", patientId] });
   };
-  const mutationError = (error: unknown) => setMessage(error instanceof ApiError ? error.message : "Não foi possível concluir a operação de assinatura.");
+  const mutationError = (error: unknown) => setMessage(apiErrorMessage(error, "Não foi possível concluir a operação de assinatura."));
   const requestMutation = useMutation({
-    mutationFn: () => requestQualifiedSignature(documentId, crypto.randomUUID()),
+    mutationFn: () => clinicalSignatures.requestQualifiedSignature(documentId, crypto.randomUUID()),
     onSuccess: async () => { setMessage("Solicitação preparada. O provedor ICP-Brasil ainda não foi acionado."); await refresh(); },
     onError: mutationError,
   });
   const cancelMutation = useMutation({
-    mutationFn: () => cancelQualifiedSignature(selectedSignature?.id ?? "", cancelReason),
+    mutationFn: () => clinicalSignatures.cancelQualifiedSignature(selectedSignature?.id ?? "", cancelReason),
     onSuccess: async () => { setCancelReason(""); setMessage("Solicitação cancelada sem apagar o histórico."); await refresh(); },
     onError: mutationError,
   });
   const submitMutation = useMutation({
-    mutationFn: () => submitQualifiedSignature(selectedSignature?.id ?? ""),
+    mutationFn: () => clinicalSignatures.submitQualifiedSignature(selectedSignature?.id ?? ""),
     onSuccess: async () => { setMessage("Solicitação enviada ao provedor."); await refresh(); },
     onError: mutationError,
   });

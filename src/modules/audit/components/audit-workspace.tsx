@@ -2,13 +2,14 @@
 
 import { useQuery } from "@tanstack/react-query";
 
+import { useCliniServices } from "@/app/service-container";
 import { Card } from "@/components/ui/card";
-import { ApiError } from "@/lib/api/client";
-import { listAuditEvents } from "@/modules/audit/api";
+import { isUnauthorized } from "@/lib/error-policy";
 
 export function AuditWorkspace() {
-  const auditQuery = useQuery({ queryKey: ["audit-events"], queryFn: listAuditEvents, retry: false });
-  if (auditQuery.isError && auditQuery.error instanceof ApiError && auditQuery.error.status === 401) {
+  const { audit } = useCliniServices();
+  const auditQuery = useQuery({ queryKey: ["audit-events"], queryFn: audit.listAuditEvents, retry: false });
+  if (auditQuery.isError && isUnauthorized(auditQuery.error)) {
     return <Card className="p-5"><h2 className="text-lg font-bold">Auditoria</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">Entre para consultar a trilha de auditoria.</p></Card>;
   }
   if (auditQuery.isError) return <Card className="p-5"><p className="text-sm text-danger">Não foi possível carregar a auditoria.</p></Card>;

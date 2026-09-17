@@ -8,10 +8,27 @@ export function instant(date: string, time: string) {
   return new Date(`${date}T${time}:00`).toISOString();
 }
 
+export function addHour(value: string) {
+  const [hours, minutes] = value.split(":").map(Number);
+  const next = new Date(2000, 0, 1, hours, minutes);
+  next.setHours(next.getHours() + 1);
+  return `${String(next.getHours()).padStart(2, "0")}:${String(next.getMinutes()).padStart(2, "0")}`;
+}
+
+export function composeAppointmentNotes(notes: string, procedure?: string) {
+  return [procedure ? `Procedimento: ${procedure}` : "", notes.trim()].filter(Boolean).join("\n");
+}
+
 export function addDays(date: string, amount: number) {
   const value = new Date(`${date}T00:00:00`);
   value.setDate(value.getDate() + amount);
   return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
+}
+
+export function addDaysAsIsoInstant(date: string, amount: number) {
+  const value = new Date(`${date}T00:00:00`);
+  value.setDate(value.getDate() + amount);
+  return value.toISOString();
 }
 
 export function nextDate(date: string) {
