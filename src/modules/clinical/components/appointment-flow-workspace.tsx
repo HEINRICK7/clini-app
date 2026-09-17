@@ -12,6 +12,7 @@ import { Card } from "@/components/ui/card";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { apiErrorMessage } from "@/lib/error-policy";
 import { buildEvolutionContent, type NextStep } from "@/modules/clinical/application/appointment-rules";
+import { addDays, instant, localDate } from "@/modules/scheduling/application/calendar-rules";
 
 type FlowStep = 1 | 2 | 3 | 4;
 
@@ -28,16 +29,22 @@ export function AppointmentFlowWorkspace() {
   const [selectedProcedureIds, setSelectedProcedureIds] = useState<string[]>([]);
   const [nextStep, setNextStep] = useState<NextStep>("return");
   const [returnDays, setReturnDays] = useState("30");
+  const [returnDate, setReturnDate] = useState(() => addDays(localDate(), 30));
+  const [returnStart, setReturnStart] = useState("09:00");
+  const [returnEnd, setReturnEnd] = useState("10:00");
   const [message, setMessage] = useState<string | null>(null);
   const patientsQuery = useQuery({ queryKey: ["patients", "appointment-flow"], queryFn: () => patientService.listPatients(), retry: false });
   const patients = useMemo(() => (patientsQuery.data?.items ?? []).filter((patient) => patient.status === "ACTIVE"), [patientsQuery.data]);
   const patient = patients.find((item) => item.id === patientId);
   const catalogQuery = useQuery({ queryKey: ["catalog-procedures", "appointment-flow", patient?.currentUnitId], queryFn: () => catalog.listCatalogProcedures({ unitId: patient?.currentUnitId }), enabled: Boolean(patient?.currentUnitId), retry: false });
   const finishMutation = useMutation({
-    mutationFn: () => clinical.createClinicalEvolution({ patientId, unitId: patient?.currentUnitId ?? "", content: buildEvolutionContent({ context, observations, procedures: catalogQuery.data?.items.filter((item) => selectedProcedureIds.includes(item.id)).map((item) => item.name) ?? [], nextStep, returnDays }), appointmentId: searchParams.get("appointmentId") ?? undefined }),
-    onSuccess: async () => {
-      setMessage("Atendimento finalizado e salvo no prontuário.");
+    mutationFn: () => clinical.completeAppointment({ patientId, unitId: patient?.currentUnitId ?? "", content: buildEvolutionContent({ context, observations, procedures: catalogQuery.data?.items.filter((item) => selectedProcedureIds.includes(item.id)).map((item) => item.name) ?? [], nextStep, returnDays }), appointmentId: searchParams.get("appointmentId") ?? undefined, nextStep, returnAppointment: nextStep === "return" ? { startsAt: instant(returnDate, returnStart), endsAt: instant(returnDate, returnEnd) } : undefined }),
+    onSuccess: async (result) => {
+      setMessage(result.returnAppointment ? "Atendimento concluído e retorno agendado." : "Atendimento concluído e evolução clínica fechada.");
       await queryClient.invalidateQueries({ queryKey: ["clinical-evolutions", patientId] });
+      await queryClient.invalidateQueries({ queryKey: ["agenda"] });
+      await queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      await queryClient.invalidateQueries({ queryKey: ["notifications"] });
     },
     onError: (error) => setMessage(apiErrorMessage(error, "Não foi possível finalizar o atendimento.")),
   });
@@ -52,6 +59,14 @@ export function AppointmentFlowWorkspace() {
     else finishMutation.mutate();
   }
 
+  function changeReturnDays(value: string) {
+    setReturnDays(value);
+    const days = Number(value);
+    if (Number.isInteger(days) && days > 0) setReturnDate(addDays(localDate(), days));
+  }
+
+  const invalidReturn = nextStep === "return" && (!returnDate || !returnStart || !returnEnd || returnStart >= returnEnd);
+
   return <section className="mx-auto grid w-full max-w-2xl gap-4">
     <div className="flex items-center gap-2"><Button aria-label="Voltar para pacientes" className="h-10 w-10 px-0" onClick={() => window.history.back()} size="sm" variant="ghost"><ArrowLeft aria-hidden="true" className="h-5 w-5" /></Button><div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Atendimento</p><h1 className="text-xl font-bold tracking-tight text-brand-navy">Iniciar atendimento</h1></div></div>
     <PatientContext patient={patient} patients={patients} patientId={patientId} onPatientChange={setPatientId} />
@@ -59,9 +74,9 @@ export function AppointmentFlowWorkspace() {
     {step === 1 ? <ContextStep context={context} onChange={setContext} /> : null}
     {step === 2 ? <ProceduresStep procedures={catalogQuery.data?.items ?? []} selectedIds={selectedProcedureIds} onToggle={toggleProcedure} isPending={catalogQuery.isPending} /> : null}
     {step === 3 ? <ObservationsStep observations={observations} onChange={setObservations} /> : null}
-    {step === 4 ? <FinishStep nextStep={nextStep} returnDays={returnDays} onNextStep={setNextStep} onReturnDays={setReturnDays} /> : null}
+    {step === 4 ? <FinishStep nextStep={nextStep} returnDays={returnDays} returnDate={returnDate} returnStart={returnStart} returnEnd={returnEnd} onNextStep={setNextStep} onReturnDays={changeReturnDays} onReturnDate={setReturnDate} onReturnStart={setReturnStart} onReturnEnd={setReturnEnd} /> : null}
     {message ? <p aria-live="polite" className={`rounded-xl px-4 py-3 text-sm ${finishMutation.isError ? "bg-danger/10 text-danger" : "bg-green-50 text-success"}`}>{message}</p> : null}
-    <Button className="w-full" disabled={!patient || !context.trim() || finishMutation.isPending} onClick={continueFlow}>{finishMutation.isPending ? "Finalizando…" : step === 4 ? "Finalizar atendimento" : "Continuar"}</Button>
+    <Button className="w-full" disabled={!patient || !context.trim() || invalidReturn || finishMutation.isPending} onClick={continueFlow}>{finishMutation.isPending ? "Finalizando…" : step === 4 ? "Finalizar atendimento" : "Continuar"}</Button>
   </section>;
 }
 
@@ -81,6 +96,6 @@ function ObservationsStep({ observations, onChange }: { observations: string; on
   return <Card className="p-5 sm:p-6"><p className="text-sm font-bold text-brand-navy">Observações</p><p className="mt-2 text-sm leading-6 text-muted-foreground">Adicione orientações, achados e a conduta definida.</p><textarea aria-label="Observações do atendimento" className="mt-5 min-h-48 w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" onChange={(event) => onChange(event.target.value)} placeholder="Escreva as observações do atendimento…" value={observations} /></Card>;
 }
 
-function FinishStep({ nextStep, returnDays, onNextStep, onReturnDays }: { nextStep: NextStep; returnDays: string; onNextStep: (value: NextStep) => void; onReturnDays: (value: string) => void }) {
-  return <Card className="p-5 sm:p-6"><p className="text-sm font-bold text-brand-navy">Qual o próximo passo?</p><div className="mt-4 grid gap-2">{([["completed", "Tratamento concluído"], ["return", "Precisa de retorno"], ["continue", "Continuar tratamento"]] as const).map(([value, label]) => { const selected = nextStep === value; return <button aria-pressed={selected} className={`flex min-h-14 items-center gap-3 rounded-xl border px-3 text-left ${selected ? "border-primary bg-blue-50/50" : "border-border"}`} key={value} onClick={() => onNextStep(value)} type="button"><span className={`flex h-5 w-5 items-center justify-center rounded-full border ${selected ? "border-primary bg-primary text-white" : "border-border"}`}>{selected ? <Check aria-hidden="true" className="h-3 w-3" /> : null}</span><span className="text-sm font-semibold">{label}</span></button>; })}</div>{nextStep === "return" ? <label className="mt-4 grid gap-1.5 text-sm font-semibold"><span>Em quantos dias?</span><div className="flex items-center gap-2"><input className="min-h-11 w-24 rounded-xl border border-border bg-surface px-3 text-sm" min="1" onChange={(event) => onReturnDays(event.target.value)} type="number" value={returnDays} /><span className="text-sm font-normal text-muted-foreground">dias</span></div></label> : null}</Card>;
+function FinishStep({ nextStep, returnDays, returnDate, returnStart, returnEnd, onNextStep, onReturnDays, onReturnDate, onReturnStart, onReturnEnd }: { nextStep: NextStep; returnDays: string; returnDate: string; returnStart: string; returnEnd: string; onNextStep: (value: NextStep) => void; onReturnDays: (value: string) => void; onReturnDate: (value: string) => void; onReturnStart: (value: string) => void; onReturnEnd: (value: string) => void }) {
+  return <Card className="p-5 sm:p-6"><p className="text-sm font-bold text-brand-navy">Qual o próximo passo?</p><p className="mt-2 text-sm leading-6 text-muted-foreground">Ao escolher retorno, o atendimento será fechado e o horário ficará reservado na agenda.</p><div className="mt-4 grid gap-2">{([["completed", "Tratamento concluído"], ["return", "Precisa de retorno"], ["continue", "Continuar tratamento"]] as const).map(([value, label]) => { const selected = nextStep === value; return <button aria-pressed={selected} className={`flex min-h-14 items-center gap-3 rounded-xl border px-3 text-left ${selected ? "border-primary bg-blue-50/50" : "border-border"}`} key={value} onClick={() => onNextStep(value)} type="button"><span className={`flex h-5 w-5 items-center justify-center rounded-full border ${selected ? "border-primary bg-primary text-white" : "border-border"}`}>{selected ? <Check aria-hidden="true" className="h-3 w-3" /> : null}</span><span className="text-sm font-semibold">{label}</span></button>; })}</div>{nextStep === "return" ? <div className="mt-4 grid gap-3 sm:grid-cols-3"><label className="grid gap-1.5 text-sm font-semibold sm:col-span-3"><span>Em quantos dias?</span><div className="flex items-center gap-2"><input aria-label="Dias até o retorno" className="min-h-11 w-24 rounded-xl border border-border bg-surface px-3 text-sm" min="1" onChange={(event) => onReturnDays(event.target.value)} type="number" value={returnDays} /><span className="text-sm font-normal text-muted-foreground">dias</span></div></label><label className="grid gap-1.5 text-sm font-semibold"><span>Data do retorno</span><input aria-label="Data do retorno" className="min-h-11 rounded-xl border border-border bg-surface px-3 text-sm" min={localDate()} onChange={(event) => onReturnDate(event.target.value)} type="date" value={returnDate} /></label><label className="grid gap-1.5 text-sm font-semibold"><span>Início</span><input aria-label="Início do retorno" className="min-h-11 rounded-xl border border-border bg-surface px-3 text-sm" onChange={(event) => onReturnStart(event.target.value)} type="time" value={returnStart} /></label><label className="grid gap-1.5 text-sm font-semibold"><span>Fim</span><input aria-label="Fim do retorno" className="min-h-11 rounded-xl border border-border bg-surface px-3 text-sm" onChange={(event) => onReturnEnd(event.target.value)} type="time" value={returnEnd} /></label></div> : null}</Card>;
 }

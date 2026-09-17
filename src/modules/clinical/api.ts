@@ -28,12 +28,48 @@ const pageSchema = z.object({
 export type ClinicalEvolution = z.infer<typeof evolutionSchema>;
 export type ClinicalEvolutionPage = z.infer<typeof pageSchema>;
 
+const appointmentSchema = z.object({
+  id: z.string().uuid(),
+  tenantId: z.string().uuid(),
+  unitId: z.string().uuid(),
+  patientId: z.string().uuid(),
+  previousAppointmentId: z.string().uuid().nullable(),
+  startsAt: z.string(),
+  endsAt: z.string(),
+  type: z.enum(["CONSULTATION", "RETURN", "WALK_IN", "URGENT"]),
+  status: z.enum(["SCHEDULED", "CONFIRMED", "COMPLETED", "CANCELED"]),
+  fitIn: z.boolean(),
+  notes: z.string().nullable(),
+});
+
+const completionSchema = z.object({
+  evolution: evolutionSchema,
+  completedAppointment: appointmentSchema.nullable(),
+  returnAppointment: appointmentSchema.nullable(),
+});
+
+export type ClinicalAppointmentCompletion = z.infer<typeof completionSchema>;
+
 export async function listClinicalEvolutions(patientId: string, page = 0, size = 20): Promise<ClinicalEvolutionPage> {
   return pageSchema.parse(await apiRequest<unknown>(`/clinical/evolutions?patientId=${encodeURIComponent(patientId)}&page=${page}&size=${size}`));
 }
 
 export async function createClinicalEvolution(input: { patientId: string; unitId: string; content: string; appointmentId?: string }): Promise<ClinicalEvolution> {
   return evolutionSchema.parse(await apiRequest<unknown>("/clinical/evolutions", { method: "POST", body: JSON.stringify(input) }));
+}
+
+export async function completeAppointment(input: {
+  patientId: string;
+  unitId: string;
+  appointmentId?: string;
+  content: string;
+  nextStep: "completed" | "return" | "continue";
+  returnAppointment?: { startsAt: string; endsAt: string };
+}): Promise<ClinicalAppointmentCompletion> {
+  return completionSchema.parse(await apiRequest<unknown>("/clinical/appointments/complete", {
+    method: "POST",
+    body: JSON.stringify({ ...input, nextStep: input.nextStep.toUpperCase() }),
+  }));
 }
 
 export async function closeClinicalEvolution(evolutionId: string): Promise<ClinicalEvolution> {

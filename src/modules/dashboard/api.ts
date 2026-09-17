@@ -22,6 +22,7 @@ const overviewSchema = z.object({
   unitId: z.string().uuid().nullable(),
   activePatients: z.number().int(),
   appointmentsToday: z.number().int(),
+  pendingReturns: z.number().int().default(0),
   upcomingAppointments: z.array(appointmentSchema),
   financial: z.object({
     incomeCents: z.number().int(),

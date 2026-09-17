@@ -50,7 +50,7 @@ export type CliniServices = typeof cliniServices;
 
 export type { AuditEntry } from "@/modules/audit/api";
 export type { CatalogProcedure } from "@/modules/catalog/api";
-export type { ClinicalEvolution } from "@/modules/clinical/api";
+export type { ClinicalAppointmentCompletion, ClinicalEvolution } from "@/modules/clinical/api";
 export type { ClinicalAttachment } from "@/modules/clinical/attachment-api";
 export type { ClinicalDocument, ClinicalDocumentType } from "@/modules/clinical/document-api";
 export type { Odontogram, OdontogramDentition, OdontogramFindingType, OdontogramSurface, OdontogramTooth, OdontogramToothInput, OdontogramToothStatus } from "@/modules/clinical/odontogram-api";

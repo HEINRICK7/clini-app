@@ -15,6 +15,7 @@ export type DashboardOverview = {
   unitId: string | null;
   activePatients: number;
   appointmentsToday: number;
+  pendingReturns: number;
   upcomingAppointments: DashboardAppointment[];
   financial: {
     incomeCents: number;
