@@ -8,8 +8,9 @@ test("odontograma visual mantém a composição principal estável", async ({ pa
 
   const heading = page.getByRole("heading", { name: "Odontograma visual" });
   await expect(heading).toBeVisible();
-  const odontogramCard = heading.locator("xpath=..");
-  await expect(odontogramCard).toHaveScreenshot("odontogram-card.png", {
+  const odontogramMap = page.getByRole("listbox", { name: "Odontogram" });
+  await expect(odontogramMap).toBeVisible();
+  await expect(odontogramMap).toHaveScreenshot("odontogram-map.png", {
     animations: "disabled",
     caret: "hide",
   });
