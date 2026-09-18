@@ -7,6 +7,7 @@ import { useCliniServices } from "@/app/service-container";
 import type { Prescription, PrescriptionItemInput } from "@/app/services";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { RelatedSelect, relatedSelectDefaults } from "@/components/ui/related-select";
 import { apiErrorMessage } from "@/lib/error-policy";
 
 export function PrescriptionWorkspace() {
@@ -56,5 +57,5 @@ export function PrescriptionWorkspace() {
 }
 
 function toInput(item: Prescription["items"][number]): PrescriptionItemInput { return { medicationName: item.medicationName, activeIngredient: item.activeIngredient ?? undefined, concentration: item.concentration ?? undefined, pharmaceuticalForm: item.pharmaceuticalForm ?? undefined, route: item.route ?? undefined, dosage: item.dosage, frequency: item.frequency, duration: item.duration ?? undefined, quantity: item.quantity ?? undefined, instructions: item.instructions ?? undefined }; }
-function ClinicalSelect({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: { value: string; label: string }[] }) { return <label className="grid gap-1.5 text-sm font-semibold"><span>{label}</span><select className="min-h-12 rounded-xl border border-border bg-surface px-4 text-base font-normal" onChange={(event) => onChange(event.target.value)} value={value}><option value="">Selecione</option>{options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>; }
+function ClinicalSelect({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: { value: string; label: string }[] }) { return <RelatedSelect {...relatedSelectDefaults(label)} label={label} onChange={onChange} options={options} value={value} />; }
 function ClinicalField({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (value: string) => void; placeholder?: string }) { return <label className="grid gap-1.5 text-sm font-semibold"><span>{label}</span><input className="min-h-11 rounded-xl border border-border bg-surface px-3 text-sm font-normal" onChange={(event) => onChange(event.target.value)} placeholder={placeholder} value={value} /></label>; }

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { X } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { useState } from "react";
 
 import type { CatalogProcedure, Treatment, ToothRecord } from "@/app/services";
@@ -24,7 +24,7 @@ function recordText(record: ToothRecord) {
   return record.description || typeLabels[record.type] + " registrado";
 }
 
-export function ToothDetailsSheet({ toothId, selectedCount, selectedTeeth, records, historyLoading, readOnly, action, input, procedures, treatments, saving, patientId, showNextSteps, canFinish, onClose, onActionChange, onInputChange, onSubmit, onSavedAction }: {
+export function ToothDetailsSheet({ toothId, selectedCount, selectedTeeth, records, historyLoading, readOnly, action, input, procedures, proceduresLoading, treatments, treatmentsLoading, saving, patientId, showNextSteps, canFinish, onClose, onActionChange, onInputChange, onSubmit, onSavedAction }: {
   toothId: string;
   selectedCount: number;
   selectedTeeth: string[];
@@ -34,7 +34,9 @@ export function ToothDetailsSheet({ toothId, selectedCount, selectedTeeth, recor
   action: ToothAction | null;
   input: ActionInput;
   procedures: CatalogProcedure[];
+  proceduresLoading: boolean;
   treatments: Treatment[];
+  treatmentsLoading: boolean;
   saving: boolean;
   patientId: string;
   showNextSteps: boolean;
@@ -61,15 +63,15 @@ export function ToothDetailsSheet({ toothId, selectedCount, selectedTeeth, recor
     </div>
 
     <section className="mt-5 border-t border-border pt-4"><p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">Situação atual</p><div className="mt-3 grid gap-2">
-      <SituationItem label="Condições" items={conditions} empty="Nenhuma condição registrada" />
-      <SituationItem label="Procedimentos" items={proceduresDone} empty="Nenhum procedimento registrado" />
-      <SituationItem label="Planejamento pendente" items={planning.filter((record) => record.status === "OPEN" || record.status === "IN_PROGRESS")} empty="Nenhum planejamento pendente" />
-      <SituationItem label="Observações" items={notes} empty="Nenhuma observação registrada" />
+      <SituationItem action={readOnly ? undefined : () => onActionChange("CONDITION")} actionLabel="Registrar condição" label="Condições" items={conditions} empty="Nenhuma condição registrada" />
+      <SituationItem action={readOnly ? undefined : () => onActionChange("PROCEDURE")} actionLabel="Registrar procedimento" label="Procedimentos" items={proceduresDone} empty="Nenhum procedimento registrado" />
+      <SituationItem action={readOnly ? undefined : () => onActionChange("PLANNING")} actionLabel="Adicionar ao planejamento" label="Planejamento pendente" items={planning.filter((record) => record.status === "OPEN" || record.status === "IN_PROGRESS")} empty="Nenhum planejamento pendente" />
+      <SituationItem action={readOnly ? undefined : () => onActionChange("NOTE")} actionLabel="Adicionar observação" label="Observações" items={notes} empty="Nenhuma observação registrada" />
     </div></section>
 
     <section className="mt-5 border-t border-border pt-4"><p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">Último registro</p>{latest ? <div className="mt-3 rounded-xl bg-surface-muted p-3"><div className="flex items-center justify-between gap-3"><span className="text-sm font-bold">{typeLabels[latest.type]}</span><time className="text-xs text-muted-foreground" dateTime={latest.createdAt}>{dateLabel(latest.createdAt)}</time></div><p className="mt-1 text-sm leading-5">{recordText(latest)}</p><OriginLink patientId={patientId} record={latest} /></div> : <p className="mt-3 rounded-xl border border-dashed border-border px-3 py-4 text-sm text-muted-foreground">Nenhum registro clínico neste dente ainda.</p>}</section>
 
-    {!readOnly ? <section className="mt-5 border-t border-border pt-4"><p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">O que deseja fazer?</p><div className="mt-3"><ToothActionMenu action={action} disabled={saving} input={input} onActionChange={onActionChange} onInputChange={onInputChange} onSubmit={onSubmit} procedures={procedures} treatments={treatments} /></div></section> : null}
+    {!readOnly ? <section className="mt-5 border-t border-border pt-4"><p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">O que deseja fazer?</p><div className="mt-3"><ToothActionMenu action={action} disabled={saving} input={input} onActionChange={onActionChange} onInputChange={onInputChange} onSubmit={onSubmit} patientId={patientId} procedures={procedures} proceduresLoading={proceduresLoading} treatments={treatments} treatmentsLoading={treatmentsLoading} /></div></section> : null}
 
     <section className="mt-5 border-t border-border pt-4"><div className="flex items-center justify-between gap-3"><p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">Histórico completo</p><span className="text-xs text-muted-foreground">{records.length} registro(s)</span></div>{historyLoading ? <p className="mt-3 text-sm text-muted-foreground">Carregando histórico…</p> : <div className="mt-3"><ToothHistory loading={false} patientId={patientId} records={showFullHistory ? records : records.slice(0, 5)} />{records.length > 5 ? <button className="mt-3 w-full rounded-xl border border-border px-3 py-2 text-sm font-bold text-primary hover:bg-surface-muted" onClick={() => setShowFullHistory((value) => !value)} type="button">{showFullHistory ? "Mostrar menos" : "Ver histórico completo"}</button> : null}</div>}</section>
 
@@ -77,8 +79,8 @@ export function ToothDetailsSheet({ toothId, selectedCount, selectedTeeth, recor
   </aside>;
 }
 
-function SituationItem({ label, items, empty }: { label: string; items: ToothRecord[]; empty: string }) {
-  return <div className="rounded-xl border border-border px-3 py-2.5"><p className="text-xs font-semibold text-muted-foreground">{label}</p>{items.length ? <ul className="mt-1 grid gap-1">{items.slice(0, 2).map((item) => <li className="text-sm font-semibold" key={item.id}>{recordText(item)}</li>)}</ul> : <p className="mt-1 text-sm text-muted-foreground">{empty}</p>}</div>;
+function SituationItem({ action, actionLabel, label, items, empty }: { action?: () => void; actionLabel: string; label: string; items: ToothRecord[]; empty: string }) {
+  return <div className="rounded-xl border border-border px-3 py-2.5"><p className="text-xs font-semibold text-muted-foreground">{label}</p>{items.length ? <ul className="mt-1 grid gap-1">{items.slice(0, 2).map((item) => <li className="text-sm font-semibold" key={item.id}>{recordText(item)}</li>)}</ul> : <div className="mt-1 flex flex-wrap items-center justify-between gap-2"><p className="text-sm text-muted-foreground">{empty}</p>{action ? <button className="inline-flex min-h-9 shrink-0 items-center gap-1 rounded-lg px-2 text-xs font-bold text-primary hover:bg-blue-50" onClick={action} type="button"><Plus aria-hidden={true} className="h-3.5 w-3.5" />{actionLabel}</button> : null}</div>}</div>;
 }
 
 function OriginLink({ patientId, record }: { patientId: string; record: ToothRecord }) {

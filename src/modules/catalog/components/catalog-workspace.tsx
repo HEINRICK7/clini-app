@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import { useCliniServices } from "@/app/service-container";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { RelatedSelect } from "@/components/ui/related-select";
 import { apiErrorMessage, isUnauthorized } from "@/lib/error-policy";
 import type { CatalogProcedure } from "@/app/services";
 import { formatPrice, parsePrice } from "@/modules/catalog/application/catalog-rules";
@@ -94,7 +95,7 @@ export function CatalogWorkspace() {
         <Button disabled={busy || !name.trim()} onClick={() => saveMutation.mutate()}>{saveMutation.isPending ? "Salvando…" : selectedId ? "Salvar procedimento" : "Adicionar procedimento"}</Button>
         {selected && selected.status === "ACTIVE" ? <>
           <div className="mt-2 border-t border-border pt-4"><p className="text-sm font-bold">Configuração por Unit</p><p className="mt-1 text-xs leading-5 text-muted-foreground">Use centavos no backend para evitar erros de arredondamento. O campo abaixo aceita, por exemplo, 189,90.</p></div>
-          <label className="grid gap-1.5 text-sm font-semibold"><span>Unit</span><select className="min-h-12 rounded-xl border border-border bg-surface px-4 text-base font-normal" onChange={(event) => setUnitId(event.target.value)} value={effectiveUnitId}><option value="">Selecione</option>{activeUnits.map((unit) => <option key={unit.id} value={unit.id}>{unit.name}</option>)}</select></label>
+          <RelatedSelect emptyDescription="Configure um local de atendimento antes de configurar o procedimento." emptyHref="/more?section=units" emptyLabel="Configurar local" label="Unit" loading={unitsQuery.isPending} onChange={setUnitId} options={activeUnits.map((unit) => ({ value: unit.id, label: unit.name }))} value={effectiveUnitId} />
           <div className="grid gap-3 sm:grid-cols-2"><CatalogField label="Preço (R$)" value={price} onChange={setPrice} placeholder="189,90" /><CatalogField label="Duração (minutos)" value={duration} onChange={setDuration} placeholder="60" type="number" /></div>
           <Button disabled={busy || !effectiveUnitId || (!price.trim() && !duration.trim())} onClick={() => configureMutation.mutate()} size="sm" variant="outline">{configureMutation.isPending ? "Salvando…" : "Salvar na Unit"}</Button>
           <Button disabled={busy} onClick={() => archiveMutation.mutate()} size="sm" variant="ghost">Arquivar sem excluir</Button>

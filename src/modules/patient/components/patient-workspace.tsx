@@ -10,6 +10,7 @@ import type { Patient, PatientDraft } from "@/app/services";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { DateOfBirthField } from "@/components/ui/date-of-birth-field";
+import { RelatedSelect } from "@/components/ui/related-select";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { apiErrorMessage, apiErrorProblem, isApiError, isUnauthorized } from "@/lib/error-policy";
 
@@ -89,7 +90,7 @@ export function PatientWorkspace() {
         <p className="text-sm font-semibold text-primary">Cadastro seguro</p>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">O paciente é único no seu Tenant e começa vinculado a uma Unit.</p>
         <form className="mt-5 grid gap-3" onSubmit={submit}>
-          <label className="grid gap-1.5 text-sm font-semibold"><span>Unit atual *</span><select className="min-h-12 rounded-xl border border-border bg-surface px-4 text-base font-normal" onChange={(event) => changeDraft("currentUnitId", event.target.value)} required value={draft.currentUnitId}><option value="">Selecione</option>{activeUnits.map((unit) => <option key={unit.id} value={unit.id}>{unit.name}{unit.primary ? " · Principal" : ""}</option>)}</select></label>
+          <RelatedSelect emptyDescription="Configure um local de atendimento antes de cadastrar o paciente." emptyHref="/more?section=units" emptyLabel="Configurar local" label="Unit atual *" loading={unitsQuery.isPending} onChange={(value) => changeDraft("currentUnitId", value)} options={activeUnits.map((unit) => ({ value: unit.id, label: `${unit.name}${unit.primary ? " · Principal" : ""}` }))} required value={draft.currentUnitId} />
           <PatientField label="Nome completo" required value={draft.fullName} onChange={(value) => changeDraft("fullName", value)} />
           <div className="grid gap-3 sm:grid-cols-2"><DateOfBirthField value={draft.dateOfBirth ?? ""} onChange={(value) => changeDraft("dateOfBirth", value)} /><PatientField label="CPF" value={draft.cpf ?? ""} onChange={(value) => changeDraft("cpf", value)} /></div>
           <div className="grid gap-3 sm:grid-cols-2"><PatientField label="Telefone" value={draft.phone ?? ""} onChange={(value) => changeDraft("phone", value)} /><PatientField label="Email (opcional)" type="email" value={draft.email ?? ""} onChange={(value) => changeDraft("email", value)} /></div>

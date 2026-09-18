@@ -8,6 +8,7 @@ import { CalendarPlus, ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
 import { useCliniServices } from "@/app/service-container";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { RelatedSelect, relatedSelectDefaults } from "@/components/ui/related-select";
 import { apiErrorMessage, isUnauthorized } from "@/lib/error-policy";
 import { useCurrentUnit } from "@/modules/auth/components/auth-gate";
 import type { Appointment } from "@/app/services";
@@ -124,7 +125,7 @@ function AppointmentCard({ appointment, busy, onCancel }: { appointment: Appoint
 }
 
 function AgendaSelect({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: { value: string; label: string }[] }) {
-  return <label className="grid min-w-0 gap-1.5 text-sm font-semibold"><span>{label}</span><select className="min-h-12 min-w-0 w-full rounded-xl border border-border bg-surface px-4 text-base font-normal" onChange={(event) => onChange(event.target.value)} value={value}><option value="">Selecione</option>{options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>;
+  return <RelatedSelect {...relatedSelectDefaults(label)} label={label} onChange={onChange} options={options} value={value} />;
 }
 
 function AgendaField({ label, type = "text", value, onChange }: { label: string; type?: string; value: string; onChange: (value: string) => void }) {

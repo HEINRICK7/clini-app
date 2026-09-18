@@ -7,6 +7,7 @@ import { useCliniServices } from "@/app/service-container";
 import type { QualifiedSignatureRequest } from "@/app/services";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { RelatedSelect } from "@/components/ui/related-select";
 import { apiErrorMessage } from "@/lib/error-policy";
 
 export function QualifiedSignatureWorkspace() {
@@ -67,8 +68,8 @@ export function QualifiedSignatureWorkspace() {
         {providerConfigured ? "Provedor ICP-Brasil configurado." : "Integração ICP-Brasil ainda não configurada. A solicitação pode ser preparada, mas não será enviada."}
       </p>
       <div className="mt-5 grid gap-3">
-        <label className="grid gap-1.5 text-sm font-semibold"><span>Paciente</span><select className="min-h-12 rounded-xl border border-border bg-surface px-4 text-base font-normal" onChange={(event) => selectPatient(event.target.value)} value={patientId}><option value="">Selecione</option>{patients.map((patient) => <option key={patient.id} value={patient.id}>{patient.fullName}</option>)}</select></label>
-        <label className="grid gap-1.5 text-sm font-semibold"><span>Documento fechado</span><select className="min-h-12 rounded-xl border border-border bg-surface px-4 text-base font-normal" disabled={!patientId} onChange={(event) => setDocumentId(event.target.value)} value={documentId}><option value="">Selecione</option>{documents.filter((document) => document.status === "CLOSED").map((document) => <option key={document.id} value={document.id}>{document.title} · v{document.version}</option>)}</select></label>
+        <RelatedSelect emptyDescription="Cadastre um paciente para preparar uma assinatura." emptyHref="/patients" emptyLabel="Cadastrar paciente" label="Paciente" loading={patientsQuery.isPending} onChange={selectPatient} options={patients.map((patient) => ({ value: patient.id, label: patient.fullName }))} value={patientId} />
+        <RelatedSelect disabled={!patientId} emptyDescription="Feche um documento clínico para disponibilizá-lo para assinatura." emptyHref="/more?section=documents" emptyLabel="Cadastrar documento" label="Documento fechado" loading={documentsQuery.isPending} onChange={setDocumentId} options={documents.filter((document) => document.status === "CLOSED").map((document) => ({ value: document.id, label: `${document.title} · v${document.version}` }))} value={documentId} />
         <Button disabled={!selectedDocument || selectedDocument.status !== "CLOSED" || Boolean(selectedSignature) || busy} onClick={() => requestMutation.mutate()}>{requestMutation.isPending ? "Preparando…" : "Preparar assinatura"}</Button>
         {selectedSignature?.status === "READY" ? <>
           <Button disabled={busy || !providerConfigured} onClick={() => submitMutation.mutate()} size="sm" variant="outline">{providerConfigured ? "Enviar ao provedor" : "Provedor não configurado"}</Button>

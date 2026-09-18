@@ -8,6 +8,7 @@ import { ArrowLeft, CalendarDays, Clock3, MapPin } from "lucide-react";
 import { useCliniServices } from "@/app/service-container";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { RelatedSelect, relatedSelectDefaults } from "@/components/ui/related-select";
 import { apiErrorMessage } from "@/lib/error-policy";
 import { useCurrentUnit } from "@/modules/auth/components/auth-gate";
 import { addHour, composeAppointmentNotes, instant, localDate } from "@/modules/scheduling/application/calendar-rules";
@@ -51,4 +52,4 @@ export function NewAppointmentScreen() {
 }
 
 function AppointmentField({ icon: Icon, label, type, value, onChange }: { icon: typeof CalendarDays; label: string; type: string; value: string; onChange: (value: string) => void }) { return <label className="grid gap-1.5 text-sm font-semibold"><span>{label}</span><span className="relative"><Icon aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary" /><input className="min-h-12 w-full rounded-xl border border-border bg-surface pl-10 pr-3 text-sm font-normal outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" onChange={(event) => onChange(event.target.value)} type={type} value={value} /></span></label>; }
-function AppointmentSelect({ icon: Icon, label, value, onChange, options }: { icon?: typeof MapPin; label: string; value: string; onChange: (value: string) => void; options: { value: string; label: string }[] }) { return <label className="grid gap-1.5 text-sm font-semibold"><span>{label}</span><span className="relative">{Icon ? <Icon aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary" /> : null}<select className={`min-h-12 w-full appearance-none rounded-xl border border-border bg-surface px-3 text-sm font-normal outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 ${Icon ? "pl-10" : ""}`} onChange={(event) => onChange(event.target.value)} value={value}><option value="">Selecione</option>{options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></span></label>; }
+function AppointmentSelect({ icon: Icon, label, value, onChange, options }: { icon?: typeof MapPin; label: string; value: string; onChange: (value: string) => void; options: { value: string; label: string }[] }) { return <RelatedSelect {...relatedSelectDefaults(label)} icon={Icon} label={label} onChange={onChange} options={options} value={value} />; }

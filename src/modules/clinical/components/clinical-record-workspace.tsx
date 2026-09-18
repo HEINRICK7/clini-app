@@ -7,6 +7,7 @@ import { useCliniServices } from "@/app/service-container";
 import type { ClinicalEvolution } from "@/app/services";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { RelatedSelect, relatedSelectDefaults } from "@/components/ui/related-select";
 import { apiErrorMessage, isUnauthorized } from "@/lib/error-policy";
 
 export function ClinicalRecordWorkspace() {
@@ -84,5 +85,5 @@ function EvolutionCard({ evolution, busy, onClose, rectificationContent, rectifi
 }
 
 function ClinicalSelect({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: { value: string; label: string }[] }) {
-  return <label className="grid gap-1.5 text-sm font-semibold"><span>{label}</span><select className="min-h-12 rounded-xl border border-border bg-surface px-4 text-base font-normal" onChange={(event) => onChange(event.target.value)} value={value}><option value="">Selecione</option>{options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>;
+  return <RelatedSelect {...relatedSelectDefaults(label)} label={label} onChange={onChange} options={options} value={value} />;
 }
