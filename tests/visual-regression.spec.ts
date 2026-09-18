@@ -13,5 +13,8 @@ test("odontograma visual mantém a composição principal estável", async ({ pa
   await expect(odontogramMap).toHaveScreenshot("odontogram-map.png", {
     animations: "disabled",
     caret: "hide",
+    // The SVG antialiasing differs by a few pixels between local Linux and the GitHub runner.
+    // Keep the allowance below 0.5% of the smallest viewport capture; size and layout remain exact.
+    maxDiffPixels: 400,
   });
 });
