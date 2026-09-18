@@ -13,10 +13,11 @@ import { UserAvatar } from "@/components/ui/user-avatar";
 import { apiErrorMessage } from "@/lib/error-policy";
 import { buildEvolutionContent, type NextStep } from "@/modules/clinical/application/appointment-rules";
 import { addDays, instant, localDate } from "@/modules/scheduling/application/calendar-rules";
+import { CliniOdontogram } from "@/modules/clinical/presentation/odontogram/components/clini-odontogram";
 
-type FlowStep = 1 | 2 | 3 | 4;
+type FlowStep = 1 | 2 | 3 | 4 | 5;
 
-const stepLabels = ["Motivo / contexto", "Procedimentos", "Observações", "Próximo passo"] as const;
+const stepLabels = ["Motivo / contexto", "Procedimentos", "Odontograma", "Observações", "Próximo passo"] as const;
 
 export function AppointmentFlowWorkspace() {
   const searchParams = useSearchParams();
@@ -73,10 +74,11 @@ export function AppointmentFlowWorkspace() {
     <Card className="p-4 sm:p-6"><div className="grid gap-2 sm:grid-cols-4" aria-label="Etapas do atendimento">{stepLabels.map((label, index) => { const itemStep = (index + 1) as FlowStep; const active = step === itemStep; const complete = step > itemStep; return <button aria-current={active ? "step" : undefined} className={`flex items-center gap-2 rounded-xl px-2 py-2 text-left text-xs font-semibold sm:block sm:text-center ${active ? "bg-blue-50 text-primary" : complete ? "text-success" : "text-muted-foreground"}`} key={label} onClick={() => { if (complete) setStep(itemStep); }} type="button"><span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full sm:mx-auto sm:mb-1 ${active ? "bg-primary text-white" : complete ? "bg-green-100 text-success" : "bg-surface-muted"}`}>{complete ? <Check aria-hidden="true" className="h-4 w-4" /> : itemStep}</span><span>{label}</span></button>; })}</div></Card>
     {step === 1 ? <ContextStep context={context} onChange={setContext} /> : null}
     {step === 2 ? <ProceduresStep procedures={catalogQuery.data?.items ?? []} selectedIds={selectedProcedureIds} onToggle={toggleProcedure} isPending={catalogQuery.isPending} /> : null}
-    {step === 3 ? <ObservationsStep observations={observations} onChange={setObservations} /> : null}
-    {step === 4 ? <FinishStep nextStep={nextStep} returnDays={returnDays} returnDate={returnDate} returnStart={returnStart} returnEnd={returnEnd} onNextStep={setNextStep} onReturnDays={changeReturnDays} onReturnDate={setReturnDate} onReturnStart={setReturnStart} onReturnEnd={setReturnEnd} /> : null}
+    {step === 3 ? patient ? <CliniOdontogram appointmentId={searchParams.get("appointmentId") ?? undefined} patientId={patient.id} unitId={patient.currentUnitId} /> : <Card className="p-5 text-sm text-muted-foreground">Selecione um paciente para abrir o odontograma.</Card> : null}
+    {step === 4 ? <ObservationsStep observations={observations} onChange={setObservations} /> : null}
+    {step === 5 ? <FinishStep nextStep={nextStep} returnDays={returnDays} returnDate={returnDate} returnStart={returnStart} returnEnd={returnEnd} onNextStep={setNextStep} onReturnDays={changeReturnDays} onReturnDate={setReturnDate} onReturnStart={setReturnStart} onReturnEnd={setReturnEnd} /> : null}
     {message ? <p aria-live="polite" className={`rounded-xl px-4 py-3 text-sm ${finishMutation.isError ? "bg-danger/10 text-danger" : "bg-green-50 text-success"}`}>{message}</p> : null}
-    <Button className="w-full" disabled={!patient || !context.trim() || invalidReturn || finishMutation.isPending} onClick={continueFlow}>{finishMutation.isPending ? "Finalizando…" : step === 4 ? "Finalizar atendimento" : "Continuar"}</Button>
+    <Button className="w-full" disabled={!patient || !context.trim() || invalidReturn || finishMutation.isPending} onClick={continueFlow}>{finishMutation.isPending ? "Finalizando…" : step === 5 ? "Finalizar atendimento" : "Continuar"}</Button>
   </section>;
 }
 

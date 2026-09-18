@@ -53,7 +53,7 @@ export type { CatalogProcedure } from "@/modules/catalog/api";
 export type { ClinicalAppointmentCompletion, ClinicalEvolution } from "@/modules/clinical/api";
 export type { ClinicalAttachment } from "@/modules/clinical/attachment-api";
 export type { ClinicalDocument, ClinicalDocumentType } from "@/modules/clinical/document-api";
-export type { Odontogram, OdontogramDentition, OdontogramFindingType, OdontogramSurface, OdontogramTooth, OdontogramToothInput, OdontogramToothStatus } from "@/modules/clinical/odontogram-api";
+export type { Odontogram, OdontogramDentition, OdontogramFindingType, OdontogramSurface, OdontogramTooth, OdontogramToothInput, OdontogramToothStatus, PatientOdontogram, ToothRecord, ToothRecordStatus, ToothSummary } from "@/modules/clinical/odontogram-api";
 export type { Prescription, PrescriptionItemInput } from "@/modules/clinical/prescription-api";
 export type { QualifiedSignatureRequest } from "@/modules/clinical/signature-api";
 export type { PlannedProcedure, PerformedProcedure, Treatment } from "@/modules/clinical/treatment-api";
