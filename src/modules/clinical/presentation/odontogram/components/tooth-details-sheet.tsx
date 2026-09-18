@@ -56,11 +56,18 @@ export function ToothDetailsSheet({ toothId, selectedCount, selectedTeeth, recor
   const notes = activeRecords.filter((record) => record.type === "NOTE");
   const latest = records[0];
 
+  function startAction(nextAction: ToothAction) {
+    onActionChange(nextAction);
+    window.requestAnimationFrame(() => document.getElementById(`tooth-action-${toothId}`)?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  }
+
   return <aside className="fixed inset-x-0 bottom-0 z-50 max-h-[min(88svh,46rem)] overflow-y-auto overscroll-contain rounded-t-3xl border border-border bg-surface p-5 pb-24 shadow-2xl lg:static lg:max-h-none lg:rounded-2xl lg:p-5 lg:pb-5 lg:shadow-sm" aria-label={`Detalhes do dente ${toothId}`}>
     <div className="flex items-start justify-between gap-3">
       <div className="min-w-0"><p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Contexto do dente</p><h3 className="mt-1 text-2xl font-bold leading-tight">Dente {toothId}</h3><p className="mt-1 text-sm font-semibold capitalize text-foreground">{metadata.name}</p><p className="mt-1 text-xs text-muted-foreground">Arcada {metadata.arch}</p>{selectedCount > 1 ? <div className="mt-2 flex max-h-12 flex-wrap gap-1.5 overflow-y-auto" aria-label="Dentes selecionados no histórico">{selectedTeeth.map((id) => <span className={`rounded-full px-2 py-1 text-[11px] font-bold ${id === toothId ? "bg-primary text-white" : "bg-surface-muted text-muted-foreground"}`} key={id}>{id}</span>)}</div> : null}</div>
       <button className="shrink-0 rounded-full p-2 text-muted-foreground hover:bg-surface-muted" onClick={onClose} aria-label="Fechar detalhes" type="button"><X size={19} /></button>
     </div>
+
+    {!activeRecords.length ? <section className="mt-5 rounded-2xl border border-primary/20 bg-blue-50/60 p-4"><p className="text-sm font-bold text-brand-navy">Este dente ainda não tem registros</p><p className="mt-1 text-sm leading-5 text-muted-foreground">Comece agora. O registro será salvo diretamente no dente {toothId}.</p>{!readOnly ? <div className="mt-3 grid grid-cols-2 gap-2"><QuickActionButton label="Condição" onClick={() => startAction("CONDITION")} /><QuickActionButton label="Procedimento" onClick={() => startAction("PROCEDURE")} /><QuickActionButton label="Planejamento" onClick={() => startAction("PLANNING")} /><QuickActionButton label="Observação" onClick={() => startAction("NOTE")} /></div> : <div className="mt-3 flex flex-wrap gap-2"><Link className="inline-flex min-h-11 items-center rounded-xl bg-primary px-3 text-xs font-bold text-white" href="/more?section=treatments">Abrir tratamentos</Link><Link className="inline-flex min-h-11 items-center rounded-xl border border-primary/30 px-3 text-xs font-bold text-primary" href="/more?section=catalog">Abrir catálogo</Link></div>}</section> : null}
 
     <section className="mt-5 border-t border-border pt-4"><p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">Situação atual</p><div className="mt-3 grid gap-2">
       <SituationItem action={readOnly ? undefined : () => onActionChange("CONDITION")} actionLabel="Registrar condição" label="Condições" items={conditions} empty="Nenhuma condição registrada" />
@@ -71,7 +78,7 @@ export function ToothDetailsSheet({ toothId, selectedCount, selectedTeeth, recor
 
     <section className="mt-5 border-t border-border pt-4"><p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">Último registro</p>{latest ? <div className="mt-3 rounded-xl bg-surface-muted p-3"><div className="flex items-center justify-between gap-3"><span className="text-sm font-bold">{typeLabels[latest.type]}</span><time className="text-xs text-muted-foreground" dateTime={latest.createdAt}>{dateLabel(latest.createdAt)}</time></div><p className="mt-1 text-sm leading-5">{recordText(latest)}</p><OriginLink patientId={patientId} record={latest} /></div> : <p className="mt-3 rounded-xl border border-dashed border-border px-3 py-4 text-sm text-muted-foreground">Nenhum registro clínico neste dente ainda.</p>}</section>
 
-    {!readOnly ? <section className="mt-5 border-t border-border pt-4"><p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">O que deseja fazer?</p><div className="mt-3"><ToothActionMenu action={action} disabled={saving} input={input} onActionChange={onActionChange} onInputChange={onInputChange} onSubmit={onSubmit} patientId={patientId} procedures={procedures} proceduresLoading={proceduresLoading} treatments={treatments} treatmentsLoading={treatmentsLoading} /></div></section> : null}
+    {!readOnly ? <section className="mt-5 scroll-mt-4 border-t border-border pt-4" id={`tooth-action-${toothId}`}><p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">O que deseja fazer?</p><div className="mt-3"><ToothActionMenu action={action} disabled={saving} input={input} onActionChange={onActionChange} onInputChange={onInputChange} onSubmit={onSubmit} patientId={patientId} procedures={procedures} proceduresLoading={proceduresLoading} treatments={treatments} treatmentsLoading={treatmentsLoading} /></div></section> : null}
 
     <section className="mt-5 border-t border-border pt-4"><div className="flex items-center justify-between gap-3"><p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">Histórico completo</p><span className="text-xs text-muted-foreground">{records.length} registro(s)</span></div>{historyLoading ? <p className="mt-3 text-sm text-muted-foreground">Carregando histórico…</p> : <div className="mt-3"><ToothHistory loading={false} patientId={patientId} records={showFullHistory ? records : records.slice(0, 5)} />{records.length > 5 ? <button className="mt-3 w-full rounded-xl border border-border px-3 py-2 text-sm font-bold text-primary hover:bg-surface-muted" onClick={() => setShowFullHistory((value) => !value)} type="button">{showFullHistory ? "Mostrar menos" : "Ver histórico completo"}</button> : null}</div>}</section>
 
@@ -90,4 +97,8 @@ function OriginLink({ patientId, record }: { patientId: string; record: ToothRec
 
 function NextActionButton({ label, onClick }: { label: string; onClick: () => void }) {
   return <button className="min-h-10 rounded-xl border border-border bg-surface px-3 text-left text-xs font-bold text-foreground hover:border-primary hover:text-primary" onClick={onClick} type="button">{label}</button>;
+}
+
+function QuickActionButton({ label, onClick }: { label: string; onClick: () => void }) {
+  return <button className="min-h-11 rounded-xl border border-primary/30 bg-surface px-3 text-left text-xs font-bold text-primary hover:border-primary hover:bg-white" onClick={onClick} type="button">+ {label}</button>;
 }
