@@ -33,8 +33,10 @@ export function PatientWorkspace() {
   const refreshPatients = () => queryClient.invalidateQueries({ queryKey: ["patients"] });
   const createMutation = useMutation({
     mutationFn: patientService.createPatient,
-    onSuccess: async () => {
+    onSuccess: async (createdPatient) => {
       setDraft({ ...initialDraft, currentUnitId: activeUnits[0]?.id ?? "" });
+      setSearch(createdPatient.fullName);
+      setPatientPage(0);
       setDuplicateMatches([]);
       setMessage("Paciente cadastrado com sucesso.");
       await refreshPatients();
@@ -81,10 +83,10 @@ export function PatientWorkspace() {
 
   return (
     <section className="grid min-w-0 gap-5">
-      <div className="flex min-w-0 items-start justify-between gap-3 pr-2 sm:pr-0"><div className="min-w-0"><p className="text-sm font-semibold text-primary">Sua base de pacientes</p><h1 className="mt-1 text-2xl font-bold tracking-tight text-brand-navy">Pacientes</h1></div><Button aria-label="Adicionar paciente" className="mr-1 h-12 w-12 shrink-0 rounded-full px-0 shadow-md sm:mr-0" disabled={!activeUnits.length} onClick={() => setShowCreate((current) => !current)}><Plus aria-hidden="true" className="h-5 w-5" /></Button></div>
+      <div className="flex w-full max-w-full min-w-0 items-start justify-between gap-3 pr-2 sm:pr-0"><div className="min-w-0"><p className="text-sm font-semibold text-primary">Sua base de pacientes</p><h1 className="mt-1 text-2xl font-bold tracking-tight text-brand-navy">Pacientes</h1></div><Button aria-label="Adicionar paciente" className="mr-1 h-12 w-12 shrink-0 rounded-full px-0 shadow-md sm:mr-0" disabled={!activeUnits.length} onClick={() => setShowCreate((current) => !current)}><Plus aria-hidden="true" className="h-5 w-5" /></Button></div>
       {!unitsQuery.isPending && !unitsQuery.isError && !activeUnits.length ? <Card className="border-primary/20 bg-blue-50/60 p-5"><p className="text-sm font-semibold text-primary">Primeiro, configure seu local de atendimento</p><h2 className="mt-1 text-lg font-bold tracking-tight text-brand-navy">Você ainda não tem uma unidade ativa</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">Cada paciente precisa estar vinculado a um local. Crie sua primeira unidade para começar a cadastrar pacientes.</p><Link className="mt-4 inline-flex min-h-11 items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary-strong" href="/more?section=units">Configurar local de atendimento</Link></Card> : null}
       <label className="relative block"><Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><input aria-label="Buscar pacientes" className="min-h-12 w-full rounded-xl border border-border bg-surface py-2 pl-10 pr-4 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" onChange={(event) => { setSearch(event.target.value); setPatientPage(0); }} placeholder="Buscar paciente…" value={search} /></label>
-      <div className="grid grid-cols-3 gap-2" role="tablist" aria-label="Filtros de pacientes">{([["all", "Todos"], ["in-treatment", "Em atendimento"], ["return", "Retorno"]] as const).map(([value, label]) => <button aria-selected={filter === value} className={`min-h-10 rounded-xl border px-2 text-xs font-semibold transition-colors ${filter === value ? "border-primary bg-primary text-primary-foreground" : "border-border bg-surface text-muted-foreground hover:bg-surface-muted"}`} key={value} onClick={() => setFilter(value)} role="tab" type="button">{label}</button>)}</div>
+      <div className="grid min-w-0 grid-cols-3 gap-2" role="tablist" aria-label="Filtros de pacientes">{([["all", "Todos"], ["in-treatment", "Em atendimento"], ["return", "Retorno"]] as const).map(([value, label]) => <button aria-selected={filter === value} className={`min-w-0 min-h-10 rounded-xl border px-2 text-xs font-semibold transition-colors ${filter === value ? "border-primary bg-primary text-primary-foreground" : "border-border bg-surface text-muted-foreground hover:bg-surface-muted"}`} key={value} onClick={() => setFilter(value)} role="tab" type="button">{label}</button>)}</div>
       {showCreate ? <Card className="p-5 sm:p-6">
         <div className="flex items-start justify-between gap-3"><div><p className="text-sm font-semibold text-primary">Novo paciente</p><h2 className="mt-1 text-xl font-bold tracking-tight">Cadastrar paciente</h2></div><Button aria-label="Fechar cadastro de paciente" className="h-10 w-10 px-0" onClick={() => setShowCreate(false)} size="sm" variant="ghost"><X aria-hidden="true" className="h-5 w-5" /></Button></div>
         <p className="text-sm font-semibold text-primary">Cadastro seguro</p>

@@ -116,9 +116,11 @@ export async function registerToothCondition(patientId: string, toothId: string,
   status?: ToothRecordStatus;
   description: string;
   performedAt?: string;
+  idempotencyKey?: string;
 }): Promise<ToothRecord> {
   return toothRecordSchema.parse(await apiRequest<unknown>(`/patients/${encodeURIComponent(patientId)}/teeth/${encodeURIComponent(toothId)}/conditions`, {
     method: "POST",
+    headers: input.idempotencyKey ? { "Idempotency-Key": input.idempotencyKey } : undefined,
     body: JSON.stringify(input),
   }));
 }
@@ -131,9 +133,11 @@ export async function registerToothProcedure(patientId: string, input: {
   status?: ToothRecordStatus;
   description?: string;
   performedAt?: string;
+  idempotencyKey?: string;
 }): Promise<ToothRecord[]> {
   return z.array(toothRecordSchema).parse(await apiRequest<unknown>(`/patients/${encodeURIComponent(patientId)}/tooth-procedures`, {
     method: "POST",
+    headers: input.idempotencyKey ? { "Idempotency-Key": input.idempotencyKey } : undefined,
     body: JSON.stringify(input),
   }));
 }
@@ -143,9 +147,11 @@ export async function registerToothNote(patientId: string, toothId: string, inpu
   appointmentId?: string;
   description: string;
   performedAt?: string;
+  idempotencyKey?: string;
 }): Promise<ToothRecord> {
   return toothRecordSchema.parse(await apiRequest<unknown>(`/patients/${encodeURIComponent(patientId)}/teeth/${encodeURIComponent(toothId)}/notes`, {
     method: "POST",
+    headers: input.idempotencyKey ? { "Idempotency-Key": input.idempotencyKey } : undefined,
     body: JSON.stringify(input),
   }));
 }
@@ -157,9 +163,11 @@ export async function addToTreatmentPlan(patientId: string, input: {
   planItemId: string;
   description?: string;
   performedAt?: string;
+  idempotencyKey?: string;
 }): Promise<ToothRecord[]> {
   return z.array(toothRecordSchema).parse(await apiRequest<unknown>(`/patients/${encodeURIComponent(patientId)}/tooth-planning`, {
     method: "POST",
+    headers: input.idempotencyKey ? { "Idempotency-Key": input.idempotencyKey } : undefined,
     body: JSON.stringify(input),
   }));
 }

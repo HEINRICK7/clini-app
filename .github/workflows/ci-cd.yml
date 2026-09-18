@@ -151,3 +151,53 @@ jobs:
           } | ssh "${ssh_args[@]}" "$remote" 'read -r ghcr_user && read -r ghcr_token && printf "%s" "$ghcr_token" | docker login ghcr.io --username "$ghcr_user" --password-stdin'
 
           ssh "${ssh_args[@]}" "$remote" "cd '$deploy_dir' && test -f .env && chmod 700 rollout-frontend.sh && CLINI_ENV='$environment_tag' BACKEND_IMAGE='$BACKEND_IMAGE:$environment_tag' FRONTEND_IMAGE='$FRONTEND_IMAGE:$GITHUB_SHA' RELEASE_TAG='$GITHUB_SHA' ./rollout-frontend.sh"
+
+  e2e-homolog:
+    name: E2E real homologation
+    needs: deploy
+    if: github.ref_name == 'homolog'
+    environment: homolog
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browser
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run real E2E suite against homologation
+        env:
+          CLINI_FRONTEND_URL: ${{ vars.CLINI_HOMOLOG_URL || 'https://app.clini-homolog.otimizanegocio.com' }}
+          CLINI_E2E_EMAIL: ${{ secrets.CLINI_E2E_EMAIL }}
+          CLINI_E2E_PASSWORD: ${{ secrets.CLINI_E2E_PASSWORD }}
+        run: |
+          set -euo pipefail
+          : "${CLINI_E2E_EMAIL:?Configure CLINI_E2E_EMAIL in the homolog environment}"
+          : "${CLINI_E2E_PASSWORD:?Configure CLINI_E2E_PASSWORD in the homolog environment}"
+          pnpm test:e2e
+
+      - name: Upload E2E artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-e2e-${{ github.sha }}
+          path: |
+            test-results/playwright
+            test-results/report
+            test-results/junit.xml
+          if-no-files-found: warn

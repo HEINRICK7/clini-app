@@ -27,7 +27,10 @@ export function PatientProfileScreen({ patientId }: { patientId: string }) {
   const evolutionsQuery = useQuery({ queryKey: ["clinical-evolutions", patientId, "profile"], queryFn: () => clinical.listClinicalEvolutions(patientId), enabled: Boolean(patient), retry: false });
   const treatmentsQuery = useQuery({ queryKey: ["treatments", patientId, "profile"], queryFn: () => clinicalTreatments.listTreatments(patientId), enabled: Boolean(patient), retry: false });
   const today = localDate();
-  const agendaQuery = useQuery({ queryKey: ["agenda", "patient-profile", patientId], queryFn: () => scheduling.listAgenda(`${today}T00:00:00.000Z`, addDaysAsIsoInstant(today, 90), patient?.currentUnitId), enabled: Boolean(patient), retry: false });
+  // O endpoint da agenda aceita janelas de no máximo 31 dias. Esta tela só
+  // precisa localizar a próxima consulta do paciente, então uma janela de
+  // 30 dias evita uma requisição inválida sem perder o objetivo do resumo.
+  const agendaQuery = useQuery({ queryKey: ["agenda", "patient-profile", patientId], queryFn: () => scheduling.listAgenda(`${today}T00:00:00.000Z`, addDaysAsIsoInstant(today, 30), patient?.currentUnitId), enabled: Boolean(patient), retry: false });
   const updateMutation = useMutation({
     mutationFn: (input: PatientUpdateForm) => patientService.updatePatient(patientId, input),
     onSuccess: async () => {

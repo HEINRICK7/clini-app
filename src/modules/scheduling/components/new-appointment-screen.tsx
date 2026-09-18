@@ -29,10 +29,13 @@ export function NewAppointmentScreen() {
   const [type, setType] = useState<Appointment["type"]>("CONSULTATION");
   const [notes, setNotes] = useState("");
   const [message, setMessage] = useState<string | null>(null);
+  const requestedPatientId = searchParams.get("patientId") ?? "";
   const unitsQuery = useQuery({ queryKey: ["units", "new-appointment"], queryFn: practice.listUnits, retry: false });
   const patientsQuery = useQuery({ queryKey: ["patients", "new-appointment"], queryFn: () => patientService.listPatients(), retry: false });
-  const patients = patientsQuery.data?.items.filter((patient) => patient.status === "ACTIVE") ?? [];
-  const patient = patients.find((item) => item.id === patientId);
+  const requestedPatientQuery = useQuery({ queryKey: ["patient", "new-appointment", requestedPatientId], queryFn: () => patientService.getPatient(requestedPatientId), enabled: Boolean(requestedPatientId), retry: false });
+  const listedPatients = patientsQuery.data?.items.filter((item) => item.status === "ACTIVE") ?? [];
+  const patients = [...new Map([...(requestedPatientQuery.data?.status === "ACTIVE" ? [requestedPatientQuery.data] : []), ...listedPatients].map((item) => [item.id, item])).values()];
+  const patient = requestedPatientQuery.data ?? patients.find((item) => item.id === patientId);
   const effectiveUnitId = unitId || patient?.currentUnitId || unitsQuery.data?.find((unit) => unit.primary && unit.status === "ACTIVE")?.id || "";
   const proceduresQuery = useQuery({ queryKey: ["catalog-procedures", "new-appointment", effectiveUnitId], queryFn: () => catalog.listCatalogProcedures({ unitId: effectiveUnitId }), enabled: Boolean(effectiveUnitId), retry: false });
   const mutation = useMutation({

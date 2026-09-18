@@ -34,12 +34,18 @@ const pageSchema = z.object({
 export type CatalogProcedure = z.infer<typeof procedureSchema>;
 
 export async function listCatalogProcedures(input: { unitId?: string; query?: string; includeArchived?: boolean } = {}) {
-  const params = new URLSearchParams();
-  if (input.unitId) params.set("unitId", input.unitId);
-  if (input.query?.trim()) params.set("q", input.query.trim());
-  if (!input.includeArchived) params.set("status", "ACTIVE");
-  params.set("size", "50");
-  return pageSchema.parse(await apiRequest<unknown>(`/catalog/procedures?${params.toString()}`));
+  const fetchPage = async (page: number) => {
+    const params = new URLSearchParams({ page: String(page), size: "50" });
+    if (input.unitId) params.set("unitId", input.unitId);
+    if (input.query?.trim()) params.set("q", input.query.trim());
+    if (!input.includeArchived) params.set("status", "ACTIVE");
+    return pageSchema.parse(await apiRequest<unknown>(`/catalog/procedures?${params.toString()}`));
+  };
+  const firstPage = await fetchPage(0);
+  if (firstPage.totalPages <= 1) return firstPage;
+  const remainingPages = await Promise.all(Array.from({ length: firstPage.totalPages - 1 }, (_, index) => fetchPage(index + 1)));
+  const items = [firstPage, ...remainingPages].flatMap((page) => page.items);
+  return { ...firstPage, items, size: items.length, totalPages: 1 };
 }
 
 export async function createCatalogProcedure(input: { name: string; description?: string }): Promise<CatalogProcedure> {

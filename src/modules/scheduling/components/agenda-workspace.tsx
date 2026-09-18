@@ -25,6 +25,7 @@ export function AgendaWorkspace() {
   const requestedPatientId = searchParams.get("patientId") ?? "";
   const [date, setDate] = useState(localDate);
   const [unitId, setUnitId] = useState(selectedUnitId ?? "");
+  const [unitWasManuallySelected, setUnitWasManuallySelected] = useState(false);
   const [view, setView] = useState<AgendaView>("day");
   const [showComposer, setShowComposer] = useState(Boolean(requestedPatientId));
   const [patientId, setPatientId] = useState(requestedPatientId);
@@ -36,7 +37,9 @@ export function AgendaWorkspace() {
   const [message, setMessage] = useState<string | null>(null);
   const unitsQuery = useQuery({ queryKey: ["units"], queryFn: practice.listUnits, retry: false });
   const patientsQuery = useQuery({ queryKey: ["patients", "agenda"], queryFn: () => patient.listPatients(), retry: false });
-  const availabilityQuery = useQuery({ queryKey: ["availability", unitId], queryFn: () => scheduling.listAvailability(unitId), enabled: Boolean(unitId), retry: false });
+  const requestedPatientQuery = useQuery({ queryKey: ["patient", "agenda", requestedPatientId], queryFn: () => patient.getPatient(requestedPatientId), enabled: Boolean(requestedPatientId), retry: false });
+  const effectiveUnitId = unitWasManuallySelected ? unitId : requestedPatientQuery.data?.currentUnitId ?? unitId;
+  const availabilityQuery = useQuery({ queryKey: ["availability", effectiveUnitId], queryFn: () => scheduling.listAvailability(effectiveUnitId), enabled: Boolean(effectiveUnitId), retry: false });
   const serverAvailability = useMemo(() => defaultAvailability.map((day) => {
       const saved = availabilityQuery.data?.find((hour) => hour.dayOfWeek === day.dayOfWeek);
       return saved ? { dayOfWeek: day.dayOfWeek, startsAt: saved.startsAt.slice(0, 5), endsAt: saved.endsAt.slice(0, 5), enabled: true } : day;
@@ -46,24 +49,24 @@ export function AgendaWorkspace() {
   const activeUnits = useMemo(() => (unitsQuery.data ?? []).filter((unit) => unit.status === "ACTIVE"), [unitsQuery.data]);
   const periodEnd = rangeEnd(date, view);
   const agendaQuery = useQuery({
-    queryKey: ["agenda", date, periodEnd, unitId],
-    queryFn: () => scheduling.listAgenda(instant(date, "00:00"), instant(periodEnd, "00:00"), unitId || undefined),
+    queryKey: ["agenda", date, periodEnd, effectiveUnitId],
+    queryFn: () => scheduling.listAgenda(instant(date, "00:00"), instant(periodEnd, "00:00"), effectiveUnitId || undefined),
     retry: false,
   });
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["agenda"] });
   const appointmentMutation = useMutation({
-    mutationFn: () => scheduling.createAppointment({ unitId, patientId, startsAt: instant(date, start), endsAt: instant(date, end), type, fitIn, notes: type === "URGENT" ? "Atendimento de urgência" : undefined }),
+    mutationFn: () => scheduling.createAppointment({ unitId: effectiveUnitId, patientId, startsAt: instant(date, start), endsAt: instant(date, end), type, fitIn, notes: type === "URGENT" ? "Atendimento de urgência" : undefined }),
     onSuccess: async () => { setMessage("Atendimento criado."); await refresh(); },
     onError: (error) => setMessage(apiErrorMessage(error, "Não foi possível criar o atendimento.")),
   });
   const blockMutation = useMutation({
-    mutationFn: () => scheduling.createScheduleBlock({ unitId: unitId || undefined, startsAt: instant(date, start), endsAt: instant(date, end), reason }),
+    mutationFn: () => scheduling.createScheduleBlock({ unitId: effectiveUnitId || undefined, startsAt: instant(date, start), endsAt: instant(date, end), reason }),
     onSuccess: async () => { setMessage("Bloqueio criado."); setReason(""); await refresh(); },
     onError: (error) => setMessage(apiErrorMessage(error, "Não foi possível criar o bloqueio.")),
   });
   const availabilityMutation = useMutation({
-    mutationFn: () => scheduling.replaceAvailability(unitId, availability.filter((day) => day.enabled).map(({ dayOfWeek, startsAt, endsAt }) => ({ dayOfWeek, startsAt: `${startsAt}:00`, endsAt: `${endsAt}:00` }))),
-    onSuccess: async () => { setAvailabilityOverrides(null); setMessage("Funcionamento semanal salvo."); await queryClient.invalidateQueries({ queryKey: ["availability", unitId] }); },
+    mutationFn: () => scheduling.replaceAvailability(effectiveUnitId, availability.filter((day) => day.enabled).map(({ dayOfWeek, startsAt, endsAt }) => ({ dayOfWeek, startsAt: `${startsAt}:00`, endsAt: `${endsAt}:00` }))),
+    onSuccess: async () => { setAvailabilityOverrides(null); setMessage("Funcionamento semanal salvo."); await queryClient.invalidateQueries({ queryKey: ["availability", effectiveUnitId] }); },
     onError: (error) => setMessage(apiErrorMessage(error, "Não foi possível salvar o funcionamento.")),
   });
   const cancelMutation = useMutation({
@@ -72,14 +75,18 @@ export function AgendaWorkspace() {
     onError: (error) => setMessage(apiErrorMessage(error, "Não foi possível cancelar.")),
   });
   const busy = appointmentMutation.isPending || blockMutation.isPending || cancelMutation.isPending || availabilityMutation.isPending;
+  const agenda = agendaQuery.data;
+  const patients = useMemo(() => {
+    const listed = patientsQuery.data?.items.filter((item) => item.status === "ACTIVE") ?? [];
+    const contextual = requestedPatientQuery.data?.status === "ACTIVE" ? [requestedPatientQuery.data] : [];
+    return [...new Map([...contextual, ...listed].map((item) => [item.id, item])).values()];
+  }, [patientsQuery.data, requestedPatientQuery.data]);
 
   if (agendaQuery.isError && isUnauthorized(agendaQuery.error)) {
     return <Card className="p-5"><h2 className="text-lg font-bold">Agenda</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">Entre para acessar a agenda.</p></Card>;
   }
   if (agendaQuery.isError) return <Card className="p-5"><p className="text-sm text-danger">Não foi possível carregar a agenda.</p></Card>;
 
-  const agenda = agendaQuery.data;
-  const patients = patientsQuery.data?.items.filter((patient) => patient.status === "ACTIVE") ?? [];
   return (
     <section className="grid min-w-0 gap-5">
       <div className="flex min-w-0 items-start justify-between gap-3">
@@ -89,20 +96,20 @@ export function AgendaWorkspace() {
       <div className="grid min-w-0 grid-cols-3 rounded-xl border border-border bg-surface-muted p-1" role="tablist" aria-label="Período da agenda">
         {([["day", "Hoje"], ["week", "Semana"], ["month", "Mês"]] as const).map(([value, label]) => <button aria-selected={view === value} className={`min-h-10 rounded-lg px-3 text-sm font-semibold transition-colors ${view === value ? "bg-surface text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"}`} key={value} onClick={() => setView(value)} role="tab" type="button">{label}</button>)}
       </div>
-      <div className="flex min-w-0 items-center justify-between gap-3"><Button aria-label="Período anterior" className="h-10 w-10 shrink-0 px-0" onClick={() => setDate(addDays(date, view === "day" ? -1 : view === "week" ? -7 : -30))} size="sm" variant="ghost"><ChevronLeft aria-hidden="true" className="h-5 w-5" /></Button><div className="min-w-0 text-center"><p className="break-words text-sm font-bold text-brand-navy">{formatRangeLabel(date, view)}</p><p className="truncate text-xs text-muted-foreground">{currentUnitLabel(activeUnits, unitId)}</p></div><Button aria-label="Próximo período" className="h-10 w-10 shrink-0 px-0" onClick={() => setDate(addDays(date, view === "day" ? 1 : view === "week" ? 7 : 30))} size="sm" variant="ghost"><ChevronRight aria-hidden="true" className="h-5 w-5" /></Button></div>
+      <div className="flex min-w-0 items-center justify-between gap-3"><Button aria-label="Período anterior" className="h-10 w-10 shrink-0 px-0" onClick={() => setDate(addDays(date, view === "day" ? -1 : view === "week" ? -7 : -30))} size="sm" variant="ghost"><ChevronLeft aria-hidden="true" className="h-5 w-5" /></Button><div className="min-w-0 text-center"><p className="break-words text-sm font-bold text-brand-navy">{formatRangeLabel(date, view)}</p><p className="truncate text-xs text-muted-foreground">{currentUnitLabel(activeUnits, effectiveUnitId)}</p></div><Button aria-label="Próximo período" className="h-10 w-10 shrink-0 px-0" onClick={() => setDate(addDays(date, view === "day" ? 1 : view === "week" ? 7 : 30))} size="sm" variant="ghost"><ChevronRight aria-hidden="true" className="h-5 w-5" /></Button></div>
       {showComposer ? <Card className="p-5 sm:p-6">
         <div className="flex items-start justify-between gap-3"><div><p className="text-sm font-semibold text-primary">Novo atendimento</p><h2 className="mt-1 text-xl font-bold tracking-tight">Adicionar à agenda</h2></div><Button aria-label="Fechar novo agendamento" className="h-10 w-10 px-0" onClick={() => setShowComposer(false)} size="sm" variant="ghost"><X aria-hidden="true" className="h-5 w-5" /></Button></div>
         <p className="mt-2 break-words text-sm leading-6 text-muted-foreground">Todo atendimento fica ligado a um paciente e a um local. Bloqueios operacionais ficam separados.</p>
         <div className="mt-5 grid min-w-0 gap-3">
-          <AgendaSelect label="Local de atendimento" value={unitId} onChange={(value) => { setUnitId(value); setAvailabilityOverrides(null); }} options={activeUnits.map((unit) => ({ value: unit.id, label: unit.name }))} />
-          <AgendaSelect label="Paciente" value={patientId} onChange={setPatientId} options={patients.filter((patient) => !unitId || patient.currentUnitId === unitId).map((patient) => ({ value: patient.id, label: patient.fullName }))} />
+          <AgendaSelect label="Local de atendimento" value={effectiveUnitId} onChange={(value) => { setUnitWasManuallySelected(true); setUnitId(value); setAvailabilityOverrides(null); }} options={activeUnits.map((unit) => ({ value: unit.id, label: unit.name }))} />
+          <AgendaSelect label="Paciente" value={patientId} onChange={setPatientId} options={patients.filter((patient) => !effectiveUnitId || patient.currentUnitId === effectiveUnitId).map((patient) => ({ value: patient.id, label: patient.fullName }))} />
           <div className="grid min-w-0 gap-3 sm:grid-cols-3"><AgendaField label="Data" type="date" value={date} onChange={setDate} /><AgendaField label="Início" type="time" value={start} onChange={setStart} /><AgendaField label="Fim" type="time" value={end} onChange={setEnd} /></div>
           <AgendaSelect label="Tipo" value={type} onChange={(value) => setType(value as Appointment["type"])} options={[{ value: "CONSULTATION", label: "Consulta" }, { value: "RETURN", label: "Retorno" }, { value: "WALK_IN", label: "Encaixe" }, { value: "URGENT", label: "Urgência" }]} />
           <label className="flex min-h-11 items-center gap-2 text-sm"><input checked={fitIn} onChange={(event) => setFitIn(event.target.checked)} type="checkbox" /> Autorizar como encaixe se houver conflito</label>
           {message ? <p aria-live="polite" className="rounded-xl bg-cyan-50 px-3 py-2 text-sm leading-5 text-brand-navy">{message}</p> : null}
-          <Button disabled={busy || !unitId || !patientId} onClick={() => appointmentMutation.mutate()}>{appointmentMutation.isPending ? "Salvando…" : "Criar atendimento"}</Button>
+          <Button disabled={busy || !effectiveUnitId || !patientId} onClick={() => appointmentMutation.mutate()}>{appointmentMutation.isPending ? "Salvando…" : "Criar atendimento"}</Button>
           <div className="border-t border-border pt-4"><p className="mb-2 text-sm font-semibold">Bloqueio sem paciente</p><AgendaField label="Motivo" value={reason} onChange={setReason} /><Button className="mt-3 w-full" disabled={busy || !reason.trim()} onClick={() => blockMutation.mutate()} variant="outline">Criar bloqueio</Button></div>
-          <div className="border-t border-border pt-4"><p className="mb-2 text-sm font-semibold">Funcionamento semanal</p><p className="mb-3 text-xs leading-5 text-muted-foreground">Opcional. Quando preenchido, impede novos atendimentos fora desses horários.</p><div className="grid gap-2">{availability.map((day, index) => <div className="grid min-w-0 grid-cols-2 items-center gap-2 sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)]" key={day.dayOfWeek}><label className="col-span-2 flex min-h-11 min-w-0 items-center gap-2 text-xs font-semibold sm:col-span-1"><input checked={day.enabled} onChange={(event) => setAvailabilityOverrides((current) => (current ?? serverAvailability).map((item) => item.dayOfWeek === day.dayOfWeek ? { ...item, enabled: event.target.checked } : item))} type="checkbox" />{weekdayLabels[index]}</label><input aria-label={`${weekdayLabels[index]} início`} className="min-h-11 min-w-0 w-full rounded-xl border border-border bg-surface px-2 text-sm" disabled={!day.enabled} onChange={(event) => setAvailabilityOverrides((current) => (current ?? serverAvailability).map((item) => item.dayOfWeek === day.dayOfWeek ? { ...item, startsAt: event.target.value } : item))} type="time" value={day.startsAt} /><input aria-label={`${weekdayLabels[index]} fim`} className="min-h-11 min-w-0 w-full rounded-xl border border-border bg-surface px-2 text-sm" disabled={!day.enabled} onChange={(event) => setAvailabilityOverrides((current) => (current ?? serverAvailability).map((item) => item.dayOfWeek === day.dayOfWeek ? { ...item, endsAt: event.target.value } : item))} type="time" value={day.endsAt} /></div>)}</div><Button className="mt-3 w-full" disabled={busy || !unitId} onClick={() => availabilityMutation.mutate()} variant="outline">Salvar horários</Button></div>
+          <div className="border-t border-border pt-4"><p className="mb-2 text-sm font-semibold">Funcionamento semanal</p><p className="mb-3 text-xs leading-5 text-muted-foreground">Opcional. Quando preenchido, impede novos atendimentos fora desses horários.</p><div className="grid gap-2">{availability.map((day, index) => <div className="grid min-w-0 grid-cols-2 items-center gap-2 sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)]" key={day.dayOfWeek}><label className="col-span-2 flex min-h-11 min-w-0 items-center gap-2 text-xs font-semibold sm:col-span-1"><input checked={day.enabled} onChange={(event) => setAvailabilityOverrides((current) => (current ?? serverAvailability).map((item) => item.dayOfWeek === day.dayOfWeek ? { ...item, enabled: event.target.checked } : item))} type="checkbox" />{weekdayLabels[index]}</label><input aria-label={`${weekdayLabels[index]} início`} className="min-h-11 min-w-0 w-full rounded-xl border border-border bg-surface px-2 text-sm" disabled={!day.enabled} onChange={(event) => setAvailabilityOverrides((current) => (current ?? serverAvailability).map((item) => item.dayOfWeek === day.dayOfWeek ? { ...item, startsAt: event.target.value } : item))} type="time" value={day.startsAt} /><input aria-label={`${weekdayLabels[index]} fim`} className="min-h-11 min-w-0 w-full rounded-xl border border-border bg-surface px-2 text-sm" disabled={!day.enabled} onChange={(event) => setAvailabilityOverrides((current) => (current ?? serverAvailability).map((item) => item.dayOfWeek === day.dayOfWeek ? { ...item, endsAt: event.target.value } : item))} type="time" value={day.endsAt} /></div>)}</div><Button className="mt-3 w-full" disabled={busy || !effectiveUnitId} onClick={() => availabilityMutation.mutate()} variant="outline">Salvar horários</Button></div>
         </div>
       </Card> : null}
 

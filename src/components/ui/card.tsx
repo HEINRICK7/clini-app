@@ -6,7 +6,7 @@ export function Card({ className, ...props }: CardProps) {
   return (
     <section
       className={cn(
-        "rounded-2xl border border-border bg-surface",
+        "w-full min-w-0 rounded-2xl border border-border bg-surface",
         className,
       )}
       {...props}

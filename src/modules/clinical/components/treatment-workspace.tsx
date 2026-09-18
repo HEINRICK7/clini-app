@@ -26,10 +26,16 @@ export function TreatmentWorkspace() {
   const [performedContent, setPerformedContent] = useState("");
   const [performedPlannedId, setPerformedPlannedId] = useState("");
   const [message, setMessage] = useState<string | null>(null);
+  const requestedPatientId = searchParams.get("patientId") ?? "";
   const patientsQuery = useQuery({ queryKey: ["patients", "treatments"], queryFn: () => patientService.listPatients(), retry: false });
+  const requestedPatientQuery = useQuery({ queryKey: ["patient", "treatments", requestedPatientId], queryFn: () => patientService.getPatient(requestedPatientId), enabled: Boolean(requestedPatientId), retry: false });
   const unitsQuery = useQuery({ queryKey: ["units"], queryFn: practice.listUnits, retry: false });
-  const patients = useMemo(() => (patientsQuery.data?.items ?? []).filter((patient) => patient.status === "ACTIVE"), [patientsQuery.data]);
-  const selectedPatient = patients.find((patient) => patient.id === patientId);
+  const patients = useMemo(() => {
+    const listed = (patientsQuery.data?.items ?? []).filter((patient) => patient.status === "ACTIVE");
+    const contextual = requestedPatientQuery.data?.status === "ACTIVE" ? [requestedPatientQuery.data] : [];
+    return [...new Map([...contextual, ...listed].map((patient) => [patient.id, patient])).values()];
+  }, [patientsQuery.data, requestedPatientQuery.data]);
+  const selectedPatient = requestedPatientQuery.data ?? patients.find((patient) => patient.id === patientId);
   const catalogQuery = useQuery({ queryKey: ["catalog-procedures", "treatment", selectedPatient?.currentUnitId], queryFn: () => catalog.listCatalogProcedures({ unitId: selectedPatient?.currentUnitId }), enabled: Boolean(selectedPatient?.currentUnitId), retry: false });
   const treatmentsQuery = useQuery({ queryKey: ["treatments", patientId], queryFn: () => clinicalTreatments.listTreatments(patientId), enabled: Boolean(patientId), retry: false });
   const performedQuery = useQuery({ queryKey: ["performed-procedures", selectedTreatmentId], queryFn: () => clinicalTreatments.listPerformedProcedures(selectedTreatmentId), enabled: Boolean(selectedTreatmentId), retry: false });
