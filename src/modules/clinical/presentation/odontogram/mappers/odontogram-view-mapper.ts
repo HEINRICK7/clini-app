@@ -14,3 +14,25 @@ export function summaryMap(teeth: ToothSummary[]) {
 export function toothLabel(toothId: string) {
   return `Dente ${toothId}`;
 }
+
+const toothNames: Record<string, string> = {
+  "1": "incisivo central",
+  "2": "incisivo lateral",
+  "3": "canino",
+  "4": "primeiro pré-molar",
+  "5": "segundo pré-molar",
+  "6": "primeiro molar",
+  "7": "segundo molar",
+  "8": "terceiro molar",
+};
+
+export function toothMetadata(toothId: string) {
+  const quadrant = toothId[0];
+  const name = toothNames[toothId[1]] ?? "dente";
+  const arch = quadrant === "1" || quadrant === "2" ? "superior" : "inferior";
+  const side = quadrant === "1" || quadrant === "4" ? "direito" : "esquerdo";
+  return {
+    name: `${name} ${arch} ${side}`,
+    arch: `${arch} · lado ${side}`,
+  };
+}

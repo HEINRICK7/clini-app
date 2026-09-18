@@ -3,6 +3,11 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   output: "standalone",
   poweredByHeader: false,
+  experimental: {
+    // The CLI mode emits no captured output with Node 24; the API mode keeps
+    // Next's type checking enabled and works consistently in CI and locally.
+    useTypeScriptCli: false,
+  },
   async rewrites() {
     const apiOrigin = process.env.CLINI_INTERNAL_API_URL ?? "http://localhost:8080";
 
