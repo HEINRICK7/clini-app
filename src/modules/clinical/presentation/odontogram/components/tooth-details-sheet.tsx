@@ -6,9 +6,10 @@ import type { CatalogProcedure, Treatment, ToothRecord } from "@/app/services";
 import { ToothHistory } from "./tooth-history";
 import { ToothActionMenu, type ActionInput, type ToothAction } from "./tooth-action-menu";
 
-export function ToothDetailsSheet({ toothId, selectedCount, records, historyLoading, readOnly, action, input, procedures, treatments, saving, onClose, onActionChange, onInputChange, onSubmit }: {
+export function ToothDetailsSheet({ toothId, selectedCount, selectedTeeth, records, historyLoading, readOnly, action, input, procedures, treatments, saving, onClose, onActionChange, onInputChange, onSubmit }: {
   toothId: string;
   selectedCount: number;
+  selectedTeeth: string[];
   records: ToothRecord[];
   historyLoading: boolean;
   readOnly: boolean;
@@ -22,9 +23,9 @@ export function ToothDetailsSheet({ toothId, selectedCount, records, historyLoad
   onInputChange: (input: ActionInput) => void;
   onSubmit: () => void;
 }) {
-  return <aside className="fixed inset-x-0 bottom-0 z-30 max-h-[88vh] overflow-y-auto rounded-t-3xl border border-border bg-surface p-5 shadow-2xl lg:static lg:max-h-none lg:rounded-2xl lg:shadow-sm" aria-label={`Detalhes do ${toothId}`}>
+  return <aside className="fixed inset-x-0 bottom-0 z-50 max-h-[min(84svh,42rem)] overflow-y-auto overscroll-contain rounded-t-3xl border border-border bg-surface p-5 pb-24 shadow-2xl lg:static lg:max-h-none lg:rounded-2xl lg:p-5 lg:pb-5 lg:shadow-sm" aria-label={`Detalhes do ${toothId}`}>
     <div className="flex items-start justify-between gap-3">
-      <div><p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Histórico clínico</p><h3 className="mt-1 text-xl font-bold">Dente {toothId}</h3><p className="mt-1 text-sm text-muted-foreground">{selectedCount > 1 ? `${selectedCount} dentes selecionados para ação em lote.` : "Selecione uma ação ou consulte os registros."}</p></div>
+      <div><p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Histórico clínico</p><h3 className="mt-1 text-xl font-bold">Dente {toothId}</h3><p className="mt-1 text-sm text-muted-foreground">{selectedCount > 1 ? `${selectedCount} dentes selecionados para ação em lote.` : "Selecione uma ação ou consulte os registros."}</p>{selectedCount > 1 ? <div className="mt-2 flex max-h-12 flex-wrap gap-1.5 overflow-y-auto" aria-label="Dentes selecionados no histórico">{selectedTeeth.map((id) => <span className={`rounded-full px-2 py-1 text-[11px] font-bold ${id === toothId ? "bg-primary text-white" : "bg-surface-muted text-muted-foreground"}`} key={id}>{id}</span>)}</div> : null}</div>
       <button className="rounded-full p-2 text-muted-foreground hover:bg-surface-muted" onClick={onClose} aria-label="Fechar detalhes" type="button"><X size={19} /></button>
     </div>
     <div className="mt-5 grid gap-5">
