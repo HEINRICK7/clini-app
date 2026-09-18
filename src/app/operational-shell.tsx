@@ -19,8 +19,8 @@ export function OperationalShell({ children }: Readonly<{ children: ReactNode }>
   const pathname = usePathname();
 
   return <AuthGate>
-    <main className="min-h-screen bg-background px-4 pb-24 pt-3 sm:px-6 sm:pb-28 sm:pt-5 lg:px-10">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-5">
+    <main className="min-h-screen min-w-0 bg-background px-4 pb-24 pt-3 sm:px-6 sm:pb-28 sm:pt-5 lg:px-10">
+      <div className="mx-auto flex min-w-0 w-full max-w-6xl flex-col gap-5">
         <header className="flex min-h-12 items-center justify-between px-1 sm:px-2">
           <BrandLogo compact priority={pathname === "/"} />
           <SessionHeader />

@@ -9,6 +9,7 @@ import { useCliniServices } from "@/app/service-container";
 import type { Patient, PatientDraft } from "@/app/services";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { DateOfBirthField } from "@/components/ui/date-of-birth-field";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { apiErrorMessage, apiErrorProblem, isApiError, isUnauthorized } from "@/lib/error-policy";
 
@@ -78,8 +79,8 @@ export function PatientWorkspace() {
   const busy = createMutation.isPending || transferMutation.isPending || archiveMutation.isPending;
 
   return (
-    <section className="grid gap-5">
-      <div className="flex items-start justify-between gap-3"><div><p className="text-sm font-semibold text-primary">Sua base de pacientes</p><h1 className="mt-1 text-2xl font-bold tracking-tight text-brand-navy">Pacientes</h1></div><Button aria-label="Adicionar paciente" className="h-12 w-12 shrink-0 rounded-full px-0 shadow-md" disabled={!activeUnits.length} onClick={() => setShowCreate((current) => !current)}><Plus aria-hidden="true" className="h-5 w-5" /></Button></div>
+    <section className="grid min-w-0 gap-5">
+      <div className="flex min-w-0 items-start justify-between gap-3 pr-2 sm:pr-0"><div className="min-w-0"><p className="text-sm font-semibold text-primary">Sua base de pacientes</p><h1 className="mt-1 text-2xl font-bold tracking-tight text-brand-navy">Pacientes</h1></div><Button aria-label="Adicionar paciente" className="mr-1 h-12 w-12 shrink-0 rounded-full px-0 shadow-md sm:mr-0" disabled={!activeUnits.length} onClick={() => setShowCreate((current) => !current)}><Plus aria-hidden="true" className="h-5 w-5" /></Button></div>
       {!unitsQuery.isPending && !unitsQuery.isError && !activeUnits.length ? <Card className="border-primary/20 bg-blue-50/60 p-5"><p className="text-sm font-semibold text-primary">Primeiro, configure seu local de atendimento</p><h2 className="mt-1 text-lg font-bold tracking-tight text-brand-navy">Você ainda não tem uma unidade ativa</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">Cada paciente precisa estar vinculado a um local. Crie sua primeira unidade para começar a cadastrar pacientes.</p><Link className="mt-4 inline-flex min-h-11 items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary-strong" href="/more?section=units">Configurar local de atendimento</Link></Card> : null}
       <label className="relative block"><Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><input aria-label="Buscar pacientes" className="min-h-12 w-full rounded-xl border border-border bg-surface py-2 pl-10 pr-4 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" onChange={(event) => { setSearch(event.target.value); setPatientPage(0); }} placeholder="Buscar paciente…" value={search} /></label>
       <div className="grid grid-cols-3 gap-2" role="tablist" aria-label="Filtros de pacientes">{([["all", "Todos"], ["in-treatment", "Em atendimento"], ["return", "Retorno"]] as const).map(([value, label]) => <button aria-selected={filter === value} className={`min-h-10 rounded-xl border px-2 text-xs font-semibold transition-colors ${filter === value ? "border-primary bg-primary text-primary-foreground" : "border-border bg-surface text-muted-foreground hover:bg-surface-muted"}`} key={value} onClick={() => setFilter(value)} role="tab" type="button">{label}</button>)}</div>
@@ -90,7 +91,7 @@ export function PatientWorkspace() {
         <form className="mt-5 grid gap-3" onSubmit={submit}>
           <label className="grid gap-1.5 text-sm font-semibold"><span>Unit atual *</span><select className="min-h-12 rounded-xl border border-border bg-surface px-4 text-base font-normal" onChange={(event) => changeDraft("currentUnitId", event.target.value)} required value={draft.currentUnitId}><option value="">Selecione</option>{activeUnits.map((unit) => <option key={unit.id} value={unit.id}>{unit.name}{unit.primary ? " · Principal" : ""}</option>)}</select></label>
           <PatientField label="Nome completo" required value={draft.fullName} onChange={(value) => changeDraft("fullName", value)} />
-          <div className="grid gap-3 sm:grid-cols-2"><PatientField label="Nascimento" type="date" value={draft.dateOfBirth ?? ""} onChange={(value) => changeDraft("dateOfBirth", value)} /><PatientField label="CPF" value={draft.cpf ?? ""} onChange={(value) => changeDraft("cpf", value)} /></div>
+          <div className="grid gap-3 sm:grid-cols-2"><DateOfBirthField value={draft.dateOfBirth ?? ""} onChange={(value) => changeDraft("dateOfBirth", value)} /><PatientField label="CPF" value={draft.cpf ?? ""} onChange={(value) => changeDraft("cpf", value)} /></div>
           <div className="grid gap-3 sm:grid-cols-2"><PatientField label="Telefone" value={draft.phone ?? ""} onChange={(value) => changeDraft("phone", value)} /><PatientField label="Email (opcional)" type="email" value={draft.email ?? ""} onChange={(value) => changeDraft("email", value)} /></div>
           <PatientField label="Endereço" value={draft.address ?? ""} onChange={(value) => changeDraft("address", value)} />
           {message ? <p aria-live="polite" className="rounded-xl bg-cyan-50 px-3 py-2 text-sm leading-5 text-brand-navy">{message}</p> : null}
