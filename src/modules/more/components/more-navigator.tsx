@@ -1,7 +1,7 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
-import { useState, type ComponentType } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { type ComponentType } from "react";
 import { ArrowLeft, Bell, ChevronRight, ClipboardPenLine, FileText, ListChecks, MapPin, Paperclip, Pill, ReceiptText, ScrollText, Settings, ShieldCheck, Smile, Stethoscope, WalletCards } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -41,13 +41,15 @@ const items: Array<{ id: Exclude<Section, "menu">; label: string; icon: MenuIcon
 ];
 
 export function MoreNavigator() {
+  const router = useRouter();
   const searchParams = useSearchParams();
-  const [section, setSection] = useState<Section>(() => getInitialSection(searchParams.get("section")));
+  const requestedSection = getInitialSection(searchParams.get("section"));
+  const section = requestedSection;
   const currentItem = items.find((item) => item.id === section);
 
-  if (section !== "menu" && currentItem) return <section className="grid gap-4"><div className="flex items-center gap-2"><Button aria-label="Voltar para Mais" className="h-11 w-11 px-0" onClick={() => setSection("menu")} size="sm" variant="ghost"><ArrowLeft aria-hidden={true} className="h-5 w-5" /></Button><div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Mais</p><h1 className="text-xl font-bold tracking-tight text-brand-navy">{currentItem.label}</h1></div></div><WorkspaceSection section={section} /></section>;
+  if (section !== "menu" && currentItem) return <section className="grid gap-4"><div className="flex items-center gap-2"><Button aria-label="Voltar para Mais" className="h-11 w-11 px-0" onClick={() => router.push("/more")} size="sm" variant="ghost"><ArrowLeft aria-hidden={true} className="h-5 w-5" /></Button><div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Mais</p><h1 className="text-xl font-bold tracking-tight text-brand-navy">{currentItem.label}</h1></div></div><WorkspaceSection key={`${section}:${searchParams.toString()}`} section={section} /></section>;
 
-  return <section className="mx-auto w-full max-w-2xl"><div className="mb-4"><p className="text-sm font-semibold text-primary">Seu espaço de trabalho</p><h1 className="mt-1 text-2xl font-bold tracking-tight text-brand-navy">Mais</h1><p className="mt-2 text-sm leading-6 text-muted-foreground">Acesse os recursos clínicos, operacionais e de gestão.</p></div><div className="overflow-hidden rounded-2xl border border-border bg-surface">{items.map(({ id, label, icon: Icon }) => <button className="flex min-h-16 w-full items-center gap-3 border-b border-border px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-surface-muted focus-visible:bg-surface-muted" key={id} onClick={() => setSection(id)} type="button"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-surface-muted text-brand-navy"><Icon aria-hidden={true} className="h-5 w-5" /></span><span className="flex-1 text-sm font-semibold text-foreground">{label}</span><ChevronRight aria-hidden={true} className="h-4 w-4 text-muted-foreground" /></button>)}</div></section>;
+  return <section className="mx-auto w-full max-w-2xl"><div className="mb-4"><p className="text-sm font-semibold text-primary">Seu espaço de trabalho</p><h1 className="mt-1 text-2xl font-bold tracking-tight text-brand-navy">Mais</h1><p className="mt-2 text-sm leading-6 text-muted-foreground">Acesse os recursos clínicos, operacionais e de gestão.</p></div><div className="overflow-hidden rounded-2xl border border-border bg-surface">{items.map(({ id, label, icon: Icon }) => <button className="flex min-h-16 w-full items-center gap-3 border-b border-border px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-surface-muted focus-visible:bg-surface-muted" key={id} onClick={() => router.push(`/more?section=${id}`)} type="button"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-surface-muted text-brand-navy"><Icon aria-hidden={true} className="h-5 w-5" /></span><span className="flex-1 text-sm font-semibold text-foreground">{label}</span><ChevronRight aria-hidden={true} className="h-4 w-4 text-muted-foreground" /></button>)}</div></section>;
 }
 
 function getInitialSection(value: string | null): Section {
