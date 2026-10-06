@@ -1,4 +1,4 @@
-import { allowExpectedConsoleError, api, createE2EFixture, expect, loginAsOwner, test } from "./support/e2e-fixtures";
+import { allowExpectedConsoleError, api, assertNoHorizontalOverflow, createE2EFixture, expect, loginAsOwner, test } from "./support/e2e-fixtures";
 
 const routes = [
   "/",
@@ -20,9 +20,10 @@ const routes = [
   "/more?section=settings",
 ];
 
-test("crawler percorre as rotas operacionais sem tela quebrada ou links internos inválidos", async ({ page }) => {
+test("crawler percorre as rotas operacionais sem tela quebrada ou links internos inválidos", async ({ page }, testInfo) => {
   await loginAsOwner(page);
   const fixture = await createE2EFixture(page);
+  if (testInfo.project.name === "mobile-375") await page.setViewportSize({ width: 320, height: 740 });
 
   for (const route of routes) {
     await page.goto(route);
@@ -32,6 +33,7 @@ test("crawler percorre as rotas operacionais sem tela quebrada ou links internos
     await expect(page.locator("body")).not.toContainText("Cannot read properties");
     const internalLinks = await page.locator('a[href^="/"]').evaluateAll((links) => links.map((link) => (link as HTMLAnchorElement).getAttribute("href")).filter((href): href is string => Boolean(href)));
     expect(internalLinks.every((href) => !href.startsWith("/undefined") && !href.includes("[object Object]")), `${route} gerou link inválido`).toBe(true);
+    await assertNoHorizontalOverflow(page);
   }
 
   await page.goto(`/patients/${fixture.patientId}`);

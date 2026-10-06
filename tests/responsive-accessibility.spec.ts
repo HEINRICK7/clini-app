@@ -14,6 +14,13 @@ test("layout responsivo: ações principais e odontograma cabem no viewport", as
     await expect(page.getByRole("navigation", { name: "Navegação principal" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Odontograma visual" })).toBeInViewport();
   }
+
+  if (testInfo.project.name === "mobile-375") {
+    await page.setViewportSize({ width: 320, height: 740 });
+    await assertNoHorizontalOverflow(page);
+    await expect(page.getByRole("navigation", { name: "Navegação principal" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Odontograma visual" })).toBeInViewport();
+  }
 });
 
 test("odontograma: cada dente possui nome acessível e o painel contextual é identificável", async ({ page }) => {

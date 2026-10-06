@@ -72,7 +72,8 @@ export function ToothDetailsSheet({ toothId, selectedCount, selectedTeeth, recor
     <section className="mt-5 border-t border-border pt-4"><p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">Situação atual</p><div className="mt-3 grid gap-2">
       <SituationItem action={readOnly ? undefined : () => onActionChange("CONDITION")} actionLabel="Registrar condição" label="Condições" items={conditions} empty="Nenhuma condição registrada" />
       <SituationItem action={readOnly ? undefined : () => onActionChange("PROCEDURE")} actionLabel="Registrar procedimento" label="Procedimentos" items={proceduresDone} empty="Nenhum procedimento registrado" />
-      <SituationItem action={readOnly ? undefined : () => onActionChange("PLANNING")} actionLabel="Adicionar ao planejamento" label="Planejamento pendente" items={planning.filter((record) => record.status === "OPEN" || record.status === "IN_PROGRESS")} empty="Nenhum planejamento pendente" />
+      <SituationItem action={readOnly ? undefined : () => onActionChange("PLANNING")} actionLabel="Adicionar ao planejamento" label="Planejamento aberto" items={planning.filter((record) => record.status === "OPEN")} empty="Nenhum planejamento em aberto" />
+      <SituationItem label="Em tratamento" items={planning.filter((record) => record.status === "IN_PROGRESS")} empty="Nenhum tratamento em andamento" />
       <SituationItem action={readOnly ? undefined : () => onActionChange("NOTE")} actionLabel="Adicionar observação" label="Observações" items={notes} empty="Nenhuma observação registrada" />
     </div></section>
 
@@ -86,8 +87,16 @@ export function ToothDetailsSheet({ toothId, selectedCount, selectedTeeth, recor
   </aside>;
 }
 
-function SituationItem({ action, actionLabel, label, items, empty }: { action?: () => void; actionLabel: string; label: string; items: ToothRecord[]; empty: string }) {
-  return <div className="rounded-xl border border-border px-3 py-2.5"><p className="text-xs font-semibold text-muted-foreground">{label}</p>{items.length ? <ul className="mt-1 grid gap-1">{items.slice(0, 2).map((item) => <li className="text-sm font-semibold" key={item.id}>{recordText(item)}</li>)}</ul> : <div className="mt-1 flex flex-wrap items-center justify-between gap-2"><p className="text-sm text-muted-foreground">{empty}</p>{action ? <button className="inline-flex min-h-9 shrink-0 items-center gap-1 rounded-lg px-2 text-xs font-bold text-primary hover:bg-blue-50" onClick={action} type="button"><Plus aria-hidden={true} className="h-3.5 w-3.5" />{actionLabel}</button> : null}</div>}</div>;
+function SituationItem({ action, actionLabel, label, items, empty }: { action?: () => void; actionLabel?: string; label: string; items: ToothRecord[]; empty: string }) {
+  return <div className="rounded-xl border border-border px-3 py-2.5"><p className="text-xs font-semibold text-muted-foreground">{label}</p>{items.length ? <ul className="mt-1 grid gap-1">{items.slice(0, 2).map((item) => <li className="flex flex-wrap items-center justify-between gap-2 text-sm font-semibold" key={item.id}><span>{recordText(item)}</span>{statusLabel(item.status) ? <span className="rounded-full bg-surface-muted px-2 py-1 text-[11px] font-semibold text-muted-foreground">{statusLabel(item.status)}</span> : null}</li>)}</ul> : <div className="mt-1 flex flex-wrap items-center justify-between gap-2"><p className="text-sm text-muted-foreground">{empty}</p>{action ? <button className="inline-flex min-h-9 shrink-0 items-center gap-1 rounded-lg px-2 text-xs font-bold text-primary hover:bg-blue-50" onClick={action} type="button"><Plus aria-hidden={true} className="h-3.5 w-3.5" />{actionLabel ?? "Adicionar"}</button> : null}</div>}</div>;
+}
+
+function statusLabel(status: ToothRecord["status"]) {
+  if (status === "IN_PROGRESS") return "Em andamento";
+  if (status === "OPEN") return "Aberto";
+  if (status === "COMPLETED") return "Concluído";
+  if (status === "CANCELED") return "Cancelado";
+  return null;
 }
 
 function OriginLink({ patientId, record }: { patientId: string; record: ToothRecord }) {

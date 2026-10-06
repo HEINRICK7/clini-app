@@ -161,6 +161,7 @@ export async function addToTreatmentPlan(patientId: string, input: {
   appointmentId?: string;
   toothIds: string[];
   planItemId: string;
+  status?: ToothRecordStatus;
   description?: string;
   performedAt?: string;
   idempotencyKey?: string;

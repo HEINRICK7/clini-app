@@ -37,7 +37,7 @@ export function CliniOdontogram({ patientId, unitId, appointmentId, readOnly = f
       const idempotencyKey = idempotencyKeyRef.current ??= createIdempotencyKey();
       let saved: ToothRecord[];
       if (action === "PROCEDURE") saved = await clinicalOdontograms.registerToothProcedure(patientId, { unitId, appointmentId, toothIds, procedureId: input.procedureId ?? "", status: input.status, description: input.description || undefined, idempotencyKey });
-      else if (action === "PLANNING") saved = await clinicalOdontograms.addToTreatmentPlan(patientId, { unitId, appointmentId, toothIds, planItemId: input.planItemId ?? "", description: input.description || undefined, idempotencyKey });
+      else if (action === "PLANNING") saved = await clinicalOdontograms.addToTreatmentPlan(patientId, { unitId, appointmentId, toothIds, planItemId: input.planItemId ?? "", status: input.status, description: input.description || undefined, idempotencyKey });
       else if (action === "NOTE") saved = await Promise.all(toothIds.map((toothId) => clinicalOdontograms.registerToothNote(patientId, toothId, { unitId, appointmentId, description: input.description, idempotencyKey })));
       else saved = await Promise.all(toothIds.map((toothId) => clinicalOdontograms.registerToothCondition(patientId, toothId, { unitId, appointmentId, status: input.status, description: input.description || "Condição registrada", idempotencyKey })));
       return { records: saved, toothIds };

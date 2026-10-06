@@ -32,7 +32,7 @@ export function UnitWorkspace() {
     mutationFn: practice.createUnit,
     onSuccess: async () => {
       setDraft(initialDraft);
-      setFormMessage("Unidade adicionada com sucesso.");
+      setFormMessage("Consultório adicionado com sucesso.");
       await queryClient.invalidateQueries({ queryKey: ["units"] });
     },
     onError: (error) => setFormMessage(getErrorMessage(error)),
@@ -90,12 +90,12 @@ export function UnitWorkspace() {
           <p className="text-sm font-semibold text-primary">Seu espaço de trabalho</p>
           <h2 className="mt-1 text-xl font-bold tracking-tight">Onde você atende?</h2>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            Cadastre os locais onde você atende. Cada local terá sua própria rotina.
+            Cadastre seus consultórios e unidades de atendimento. Cada local terá sua própria rotina.
           </p>
         </div>
 
         <form className="grid gap-3" onSubmit={handleSubmit}>
-          <Field label="Nome da unidade" required value={draft.name} onChange={(value) => handleDraftChange("name", value)} />
+          <Field label="Nome do consultório" required value={draft.name} onChange={(value) => handleDraftChange("name", value)} />
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Cidade" value={draft.city ?? ""} onChange={(value) => handleDraftChange("city", value)} />
             <Field label="Telefone" value={draft.phone ?? ""} onChange={(value) => handleDraftChange("phone", value)} />
@@ -104,7 +104,7 @@ export function UnitWorkspace() {
           <Field label="WhatsApp" value={draft.whatsapp ?? ""} onChange={(value) => handleDraftChange("whatsapp", value)} />
           {formMessage ? <p aria-live="polite" className="rounded-xl bg-cyan-50 px-3 py-2 text-sm text-brand-navy">{formMessage}</p> : null}
           <Button disabled={isBusy || !draft.name.trim()} type="submit">
-            {createMutation.isPending ? "Salvando…" : "Adicionar unidade"}
+            {createMutation.isPending ? "Salvando…" : "Adicionar consultório"}
           </Button>
         </form>
       </Card>
@@ -112,14 +112,14 @@ export function UnitWorkspace() {
       <Card className="p-4 sm:p-6">
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
-            <p className="text-sm font-semibold text-primary">Unidades cadastradas</p>
+            <p className="text-sm font-semibold text-primary">Consultórios cadastrados</p>
             <h2 className="mt-1 text-xl font-bold tracking-tight">Sua rede de atendimento</h2>
           </div>
           <span className="rounded-full bg-surface-muted px-2.5 py-1 text-xs font-bold text-muted-foreground">{units.length}</span>
         </div>
         {units.length === 0 ? (
           <p className="rounded-xl border border-dashed border-border px-4 py-5 text-sm leading-6 text-muted-foreground">
-            Nenhuma unidade cadastrada ainda. Você pode começar pelo local onde atende com mais frequência.
+            Nenhum consultório cadastrado ainda. Comece pelo local onde você atende com mais frequência.
           </p>
         ) : (
           <div className="grid gap-3">
