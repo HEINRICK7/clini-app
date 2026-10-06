@@ -5,11 +5,12 @@ import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import { useCliniServices } from "@/app/service-container";
-import type { CatalogProcedure, Treatment } from "@/app/services";
+import type { CatalogProcedure, OrthodonticApplianceType, Treatment, TreatmentCategory } from "@/app/services";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { RelatedSelect } from "@/components/ui/related-select";
 import { apiErrorMessage, isUnauthorized } from "@/lib/error-policy";
+import { isOrthodonticTreatment, OrthodonticTreatmentVisual } from "@/modules/clinical/components/orthodontic-treatment-visual";
 
 export function TreatmentWorkspace() {
   const searchParams = useSearchParams();
@@ -19,6 +20,8 @@ export function TreatmentWorkspace() {
   const [selectedTreatmentId, setSelectedTreatmentId] = useState("");
   const [name, setName] = useState("");
   const [notes, setNotes] = useState("");
+  const [category, setCategory] = useState<TreatmentCategory>("GENERAL");
+  const [applianceType, setApplianceType] = useState<OrthodonticApplianceType | "">("");
   const [plannedName, setPlannedName] = useState("");
   const [plannedNotes, setPlannedNotes] = useState("");
   const [plannedCatalogId, setPlannedCatalogId] = useState("");
@@ -42,7 +45,7 @@ export function TreatmentWorkspace() {
   const refreshTreatments = () => queryClient.invalidateQueries({ queryKey: ["treatments", patientId] });
   const refreshPerformed = () => queryClient.invalidateQueries({ queryKey: ["performed-procedures", selectedTreatmentId] });
   const mutationError = (error: unknown, fallback: string) => setMessage(apiErrorMessage(error, fallback));
-  const createMutation = useMutation({ mutationFn: () => clinicalTreatments.createTreatment({ patientId, name, notes: notes || undefined }), onSuccess: async (treatment) => { setName(""); setNotes(""); setSelectedTreatmentId(treatment.id); setMessage("Tratamento criado como planejado."); await refreshTreatments(); }, onError: (error) => mutationError(error, "Não foi possível criar o tratamento.") });
+  const createMutation = useMutation({ mutationFn: () => clinicalTreatments.createTreatment({ patientId, name, notes: notes || undefined, category, applianceType: category === "ORTHODONTIC" && applianceType ? applianceType : undefined }), onSuccess: async (treatment) => { setName(""); setNotes(""); setCategory("GENERAL"); setApplianceType(""); setSelectedTreatmentId(treatment.id); setMessage("Tratamento criado como planejado."); await refreshTreatments(); }, onError: (error) => mutationError(error, "Não foi possível criar o tratamento.") });
   const statusMutation = useMutation({ mutationFn: ({ id, status }: { id: string; status: Treatment["status"] }) => clinicalTreatments.changeTreatmentStatus(id, status), onSuccess: async () => { setMessage("Status do tratamento atualizado."); await refreshTreatments(); }, onError: (error) => mutationError(error, "Não foi possível atualizar o tratamento.") });
   const plannedMutation = useMutation({ mutationFn: () => clinicalTreatments.addPlannedProcedure(selectedTreatmentId, { name: plannedCatalogId ? undefined : plannedName, catalogProcedureId: plannedCatalogId || undefined, notes: plannedNotes || undefined, expectedUnitId: selectedPatient?.currentUnitId }), onSuccess: async () => { setPlannedName(""); setPlannedNotes(""); setPlannedCatalogId(""); setMessage("Procedimento planejado adicionado."); await refreshTreatments(); }, onError: (error) => mutationError(error, "Não foi possível adicionar o procedimento planejado.") });
   const performedMutation = useMutation({ mutationFn: () => clinicalTreatments.createPerformedProcedure(selectedTreatmentId, { plannedProcedureId: performedPlannedId || undefined, unitId: selectedPatient?.currentUnitId ?? "", name: performedName, content: performedContent }), onSuccess: async () => { setPerformedName(""); setPerformedContent(""); setPerformedPlannedId(""); setMessage("Procedimento realizado salvo como rascunho."); await refreshPerformed(); }, onError: (error) => mutationError(error, "Não foi possível registrar o procedimento realizado.") });
@@ -61,9 +64,11 @@ export function TreatmentWorkspace() {
       <p className="mt-2 text-sm leading-6 text-muted-foreground">O tratamento atravessa consultas e locais; cada procedimento realizado preserva a Unit em que ocorreu.</p>
       <div className="mt-5 grid gap-3">
         <RelatedSelect emptyDescription="Cadastre um paciente para começar um tratamento." emptyHref="/patients" emptyLabel="Cadastrar paciente" label="Paciente" loading={patientsQuery.isPending} onChange={(value) => { setPatientId(value); setSelectedTreatmentId(""); setMessage(null); }} options={patients.map((patient) => ({ value: patient.id, label: patient.fullName }))} value={patientId} />
+        <label className="grid gap-1.5 text-sm font-semibold"><span>Tipo de tratamento</span><select className="min-h-11 rounded-xl border border-border bg-surface px-3 text-sm font-normal" onChange={(event) => { const nextCategory = event.target.value as TreatmentCategory; setCategory(nextCategory); if (nextCategory === "GENERAL") setApplianceType(""); }} value={category}><option value="GENERAL">Tratamento geral</option><option value="ORTHODONTIC">Ortodontia</option></select></label>
+        {category === "ORTHODONTIC" ? <label className="grid gap-1.5 text-sm font-semibold"><span>Tipo de aparelho</span><select className="min-h-11 rounded-xl border border-border bg-surface px-3 text-sm font-normal" onChange={(event) => setApplianceType(event.target.value as OrthodonticApplianceType | "")} value={applianceType}><option value="">Selecione o aparelho</option><option value="FIXED">Aparelho fixo</option><option value="CLEAR_ALIGNER">Alinhador transparente</option><option value="REMOVABLE">Aparelho removível</option><option value="OTHER">Outro aparelho</option></select></label> : null}
         <ClinicalField label="Nome do tratamento" value={name} onChange={setName} />
         <ClinicalField label="Notas do planejamento" value={notes} onChange={setNotes} />
-        <Button disabled={busy || !patientId || !name.trim()} onClick={() => createMutation.mutate()}>{createMutation.isPending ? "Salvando…" : "Criar tratamento"}</Button>
+        <Button disabled={busy || !patientId || !name.trim() || (category === "ORTHODONTIC" && !applianceType)} onClick={() => createMutation.mutate()}>{createMutation.isPending ? "Salvando…" : "Criar tratamento"}</Button>
         {message ? <p aria-live="polite" className="rounded-xl bg-cyan-50 px-3 py-2 text-sm leading-5 text-brand-navy">{message}</p> : null}
       </div>
     </Card>
@@ -72,6 +77,7 @@ export function TreatmentWorkspace() {
       {!patientId ? <p className="mt-4 rounded-xl border border-dashed border-border px-4 py-5 text-sm text-muted-foreground">Selecione um paciente para começar.</p> : null}
       <div className="mt-4 grid gap-3">{treatments.map((treatment) => <article className={`rounded-2xl border p-4 ${selectedTreatmentId === treatment.id ? "border-primary bg-cyan-50/30" : "border-border"}`} key={treatment.id}>
         <button className="w-full text-left" onClick={() => setSelectedTreatmentId(treatment.id)} type="button"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-wide text-primary">{treatment.status}</p><h3 className="mt-1 font-bold">{treatment.name}</h3></div><span className="text-xs text-muted-foreground">{treatment.plannedProcedures.length} planejado(s)</span></div><p className="mt-2 text-sm leading-5 text-muted-foreground">{treatment.notes || "Sem notas adicionais."}</p></button>
+        {isOrthodonticTreatment(treatment) ? <div className="mt-3"><OrthodonticTreatmentVisual treatment={treatment} /></div> : null}
         <div className="mt-3 flex flex-wrap gap-2">{treatment.status === "PLANNED" ? <Button disabled={busy} onClick={() => statusMutation.mutate({ id: treatment.id, status: "ACTIVE" })} size="sm">Ativar</Button> : null}{treatment.status === "ACTIVE" ? <Button disabled={busy} onClick={() => statusMutation.mutate({ id: treatment.id, status: "PAUSED" })} size="sm" variant="outline">Pausar</Button> : null}{treatment.status === "ACTIVE" && treatment.plannedProcedures.length > 0 && treatment.plannedProcedures.every((procedure) => procedure.status === "COMPLETED") ? <Button disabled={busy} onClick={() => statusMutation.mutate({ id: treatment.id, status: "COMPLETED" })} size="sm">Concluir tratamento</Button> : null}{treatment.status === "PAUSED" ? <Button disabled={busy} onClick={() => statusMutation.mutate({ id: treatment.id, status: "ACTIVE" })} size="sm">Retomar</Button> : null}</div>
         {selectedTreatmentId === treatment.id ? <TreatmentDetails catalogLoading={catalogQuery.isPending} onFocusPlannedName={() => document.getElementById("planned-procedure-name")?.focus()} treatment={treatment} activeUnits={activeUnits} catalogProcedures={catalogQuery.data?.items ?? []} plannedCatalogId={plannedCatalogId} setPlannedCatalogId={setPlannedCatalogId} plannedName={plannedName} plannedNotes={plannedNotes} setPlannedName={setPlannedName} setPlannedNotes={setPlannedNotes} plannedBusy={busy} onAddPlanned={() => plannedMutation.mutate()} performed={performedQuery.data?.items ?? []} performedName={performedName} performedContent={performedContent} performedPlannedId={performedPlannedId} setPerformedPlannedId={setPerformedPlannedId} setPerformedName={setPerformedName} setPerformedContent={setPerformedContent} performedBusy={busy} onCreatePerformed={() => performedMutation.mutate()} onClosePerformed={(id) => closePerformedMutation.mutate(id)} /> : null}
       </article>)}</div>
