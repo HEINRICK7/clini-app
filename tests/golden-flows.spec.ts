@@ -48,26 +48,47 @@ test("GF-04 novo paciente: cadastro feito pela interface aparece na lista", asyn
 test("GF-05 agenda: cria atendimento e o exibe no período selecionado", async ({ page }, testInfo) => {
   await loginAsOwner(page);
   const fixture = await createE2EFixture(page);
-  const projectDay = ({ desktop: 1, tablet: 2, "mobile-375": 3, "mobile-390": 4 } as Record<string, number>)[testInfo.project.name] ?? 5;
-  const appointmentDayOffset = projectDay + testInfo.retry * 7;
-  const appointmentDate = await page.evaluate((dayOffset) => {
+  const projectIndex = ({ desktop: 0, tablet: 1, "mobile-375": 2, "mobile-390": 3 } as Record<string, number>)[testInfo.project.name] ?? 4;
+  const runSeed = Number(process.env.GITHUB_RUN_ID ?? Date.now());
+  const appointmentDayOffset = 1 + (runSeed % 365) + projectIndex * 14 + testInfo.retry * 56;
+  const scheduleHours = expectStatus(await api<Array<{ dayOfWeek: number; startsAt: string; endsAt: string }>>(page, `/units/${fixture.unitId}/availability`), 200);
+  const availableSlots = scheduleHours.filter((hour) => {
+    const toMinutes = (value: string) => Number(value.slice(0, 2)) * 60 + Number(value.slice(3, 5));
+    return toMinutes(hour.endsAt) - toMinutes(hour.startsAt) >= 30;
+  });
+  const slot = availableSlots[0];
+  const appointmentStart = slot?.startsAt.slice(0, 5) ?? "09:00";
+  const [startHour, startMinute] = appointmentStart.split(":").map(Number);
+  const appointmentEndMinutes = startHour * 60 + startMinute + 30;
+  const appointmentEnd = `${String(Math.floor(appointmentEndMinutes / 60)).padStart(2, "0")}:${String(appointmentEndMinutes % 60).padStart(2, "0")}`;
+  const appointmentDate = await page.evaluate(({ dayOffset, availableDays }) => {
     const date = new Date();
-    date.setDate(date.getDate() + dayOffset);
+    date.setUTCHours(12, 0, 0, 0);
+    date.setUTCDate(date.getUTCDate() + dayOffset);
+    const weekdayNumbers: Record<string, number> = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7 };
+    for (let offset = 0; offset < 14; offset += 1) {
+      const weekday = new Intl.DateTimeFormat("en-US", { timeZone: "America/Fortaleza", weekday: "short" }).format(date);
+      if (!availableDays.length || availableDays.includes(weekdayNumbers[weekday])) break;
+      date.setUTCDate(date.getUTCDate() + 1);
+    }
     const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Fortaleza", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(date);
     const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
     return `${values.year}-${values.month}-${values.day}`;
-  }, appointmentDayOffset);
+  }, { dayOffset: appointmentDayOffset, availableDays: availableSlots.map(({ dayOfWeek }) => dayOfWeek) });
 
   await page.goto(`/agenda?patientId=${fixture.patientId}`);
   await expect(page.getByRole("heading", { name: "Adicionar à agenda" })).toBeVisible();
   await page.getByLabel("Local de atendimento").selectOption(fixture.unitId);
   await page.getByLabel("Paciente").selectOption(fixture.patientId);
   await page.locator('input[type="date"]').first().fill(appointmentDate);
-  await page.getByRole("textbox", { name: "Início", exact: true }).fill("09:00");
-  await page.getByRole("textbox", { name: "Fim", exact: true }).fill("10:00");
+  await page.getByRole("textbox", { name: "Início", exact: true }).fill(appointmentStart);
+  await page.getByRole("textbox", { name: "Fim", exact: true }).fill(appointmentEnd);
+  const appointmentResponsePromise = page.waitForResponse((response) => response.request().method() === "POST" && new URL(response.url()).pathname.endsWith("/agenda/appointments"));
   await page.getByRole("button", { name: "Criar atendimento" }).click();
+  const appointmentResponse = await appointmentResponsePromise;
+  expect(appointmentResponse.status()).toBe(201);
 
-  await expect(page.getByText("Atendimento criado.")).toBeVisible();
+  await expect(page.getByText("Atendimento criado.", { exact: true })).toBeVisible();
   await expect(page.getByText("Atendimento agendado")).toBeVisible();
 });
 
