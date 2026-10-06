@@ -85,7 +85,7 @@ export function UnitWorkspace() {
 
   return (
     <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.75fr)]">
-      <Card className="p-5 sm:p-6">
+      <Card className="p-4 sm:p-6">
         <div className="mb-5">
           <p className="text-sm font-semibold text-primary">Seu espaço de trabalho</p>
           <h2 className="mt-1 text-xl font-bold tracking-tight">Onde você atende?</h2>
@@ -109,7 +109,7 @@ export function UnitWorkspace() {
         </form>
       </Card>
 
-      <Card className="p-5 sm:p-6">
+      <Card className="p-4 sm:p-6">
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
             <p className="text-sm font-semibold text-primary">Unidades cadastradas</p>
@@ -125,7 +125,7 @@ export function UnitWorkspace() {
           <div className="grid gap-3">
             {units.map((unit) => (
               <article className="rounded-2xl border border-border p-4" key={unit.id}>
-                <div className="flex items-start justify-between gap-3">
+                <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <h3 className="font-bold">{unit.name}</h3>
                     <p className="mt-1 text-sm text-muted-foreground">{unit.city ?? "Cidade não informada"}</p>

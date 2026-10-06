@@ -26,8 +26,8 @@ export function NotificationWorkspace() {
 
   const notifications = notificationsQuery.data?.items ?? [];
   const totalPages = notificationsQuery.data?.totalPages ?? 0;
-  return <Card className="p-5 sm:p-6">
-    <div className="flex items-end justify-between gap-3"><div><p className="text-sm font-semibold text-primary">Pendências e eventos</p><h2 className="mt-1 text-xl font-bold tracking-tight">Notificações internas</h2></div><span className="rounded-full bg-surface-muted px-2.5 py-1 text-xs font-bold text-muted-foreground">{notificationsQuery.data?.totalItems ?? 0}</span></div>
+  return <Card className="p-4 sm:p-6">
+    <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-sm font-semibold text-primary">Pendências e eventos</p><h2 className="mt-1 text-xl font-bold tracking-tight">Notificações internas</h2></div><span className="rounded-full bg-surface-muted px-2.5 py-1 text-xs font-bold text-muted-foreground">{notificationsQuery.data?.totalItems ?? 0}</span></div>
     <div className="mt-4 grid gap-3">
       {notificationsQuery.isPending ? <p className="text-sm text-muted-foreground">Carregando notificações…</p> : null}
       {!notificationsQuery.isPending && !notifications.length ? <p className="rounded-xl border border-dashed border-border px-4 py-5 text-sm text-muted-foreground">Nenhuma notificação registrada.</p> : null}
@@ -38,5 +38,5 @@ export function NotificationWorkspace() {
 }
 
 function NotificationCard({ notification, busy, onRead }: { notification: Notification; busy: boolean; onRead: () => void }) {
-  return <article className={`rounded-2xl border p-4 ${notification.unread ? "border-primary bg-cyan-50/30" : "border-border"}`}><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-wide text-primary">{notification.type.replaceAll("_", " ")}</p><h3 className="mt-1 font-bold">{notification.title}</h3></div><span className="text-xs text-muted-foreground">{new Date(notification.createdAt).toLocaleString("pt-BR")}</span></div><p className="mt-2 text-sm leading-5 text-muted-foreground">{notification.message}</p>{notification.unread ? <Button className="mt-3" disabled={busy} onClick={onRead} size="sm" variant="outline">Marcar como lida</Button> : <p className="mt-3 text-xs font-semibold text-success">Lida</p>}</article>;
+  return <article className={`rounded-2xl border p-4 ${notification.unread ? "border-primary bg-cyan-50/30" : "border-border"}`}><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-wide text-primary">{notification.type.replaceAll("_", " ")}</p><h3 className="mt-1 font-bold">{notification.title}</h3></div><span className="text-xs text-muted-foreground">{new Date(notification.createdAt).toLocaleString("pt-BR")}</span></div><p className="mt-2 text-sm leading-5 text-muted-foreground">{notification.message}</p>{notification.unread ? <Button className="mt-3" disabled={busy} onClick={onRead} size="sm" variant="outline">Marcar como lida</Button> : <p className="mt-3 text-xs font-semibold text-success">Lida</p>}</article>;
 }

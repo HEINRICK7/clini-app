@@ -51,7 +51,7 @@ export function ActivationScreen({ token }: Readonly<{ token: string }>) {
   const canSubmit = password.length >= 8 && confirmPassword.length >= 8 && passwordsMatch && termsAccepted && !activateMutation.isPending;
 
   return (
-    <section aria-labelledby="activation-title" className="flex min-h-[100dvh] w-full max-w-3xl flex-col bg-surface px-5 pb-[calc(env(safe-area-inset-bottom)+2rem)] pt-[calc(env(safe-area-inset-top)+2rem)] sm:px-10 lg:px-12">
+    <section aria-labelledby="activation-title" className="flex min-h-[100dvh] w-full max-w-3xl flex-col bg-surface px-4 pb-[calc(env(safe-area-inset-bottom)+2rem)] pt-[calc(env(safe-area-inset-top)+2rem)] sm:px-10 lg:px-12">
       <button aria-label="Voltar para o login" className="inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-surface-muted text-slate-600 transition-colors hover:bg-blue-50 hover:text-brand-navy focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary" onClick={() => router.replace("/login")} type="button">
         <ArrowLeft aria-hidden="true" className="h-8 w-8" strokeWidth={2.2} />
       </button>
@@ -61,16 +61,16 @@ export function ActivationScreen({ token }: Readonly<{ token: string }>) {
       </div>
 
       <header className="mt-10 text-center sm:mt-12">
-        <h1 className="text-[clamp(2.25rem,7vw,4rem)] font-extrabold leading-[1.04] tracking-[-0.04em] text-brand-navy" id="activation-title">Seu acesso ao Clini<br />está pronto</h1>
+        <h1 className="text-[clamp(1.875rem,7vw,4rem)] font-extrabold leading-[1.04] tracking-[-0.04em] text-brand-navy" id="activation-title">Seu acesso ao Clini<br />está pronto</h1>
         <p className="clini-subtitle mt-5 text-lg leading-8 text-slate-500 sm:text-2xl">Ative sua conta para começar a usar o sistema.</p>
       </header>
 
-      <div className="mt-10 flex flex-col gap-6 rounded-[1.75rem] bg-blue-50 px-7 py-7 sm:flex-row sm:items-start sm:justify-between sm:px-9 sm:py-8">
+      <div className="mt-10 flex flex-col gap-5 rounded-[1.75rem] bg-blue-50 px-4 py-5 sm:flex-row sm:items-start sm:justify-between sm:gap-6 sm:px-9 sm:py-8">
         <div>
           <h2 className="text-2xl font-extrabold leading-tight tracking-[-0.03em] text-brand-navy sm:text-3xl">Olá, {invitation.name}</h2>
           <p className="mt-3 max-w-md text-lg leading-8 text-slate-600 sm:text-xl">Sua conta foi preparada pela equipe do Clini. É só ativar para começar a usar.</p>
         </div>
-        <span className="inline-flex shrink-0 items-center gap-3 self-start rounded-full bg-success/10 px-6 py-3 text-base font-extrabold text-success sm:mt-1 sm:text-lg"><span aria-hidden="true" className="h-3 w-3 rounded-full bg-success" />Convite preparado</span>
+        <span className="inline-flex shrink-0 items-center gap-2 self-start rounded-full bg-success/10 px-4 py-3 text-sm font-extrabold text-success sm:mt-1 sm:gap-3 sm:px-6 sm:text-lg"><span aria-hidden="true" className="h-3 w-3 shrink-0 rounded-full bg-success" />Convite preparado</span>
       </div>
 
       <form className="mt-10 grid min-w-0 grid-cols-1 gap-7" onSubmit={submit}>
@@ -102,7 +102,7 @@ export function ActivationScreen({ token }: Readonly<{ token: string }>) {
 }
 
 function ReadonlyField({ email }: Readonly<{ email: string }>) {
-  return <div className="min-w-0"><label className="mb-3 block text-lg font-extrabold text-brand-navy sm:text-2xl" htmlFor="activation-email">E-mail</label><div className="flex h-[74px] min-w-0 w-full items-center justify-between gap-4 overflow-hidden rounded-2xl border-2 border-border bg-surface-muted px-6 text-lg text-slate-600 sm:text-2xl"><input aria-label="E-mail do convite" className="min-w-0 flex-1 bg-transparent outline-none" id="activation-email" readOnly type="email" value={email} /><span className="shrink-0 text-base text-slate-400 sm:text-xl">Somente leitura</span></div></div>;
+  return <div className="min-w-0"><label className="mb-3 block text-lg font-extrabold text-brand-navy sm:text-2xl" htmlFor="activation-email">E-mail</label><div className="flex h-[74px] min-w-0 w-full items-center justify-between gap-2 overflow-hidden rounded-2xl border-2 border-border bg-surface-muted px-4 text-base text-slate-600 sm:gap-4 sm:px-6 sm:text-2xl"><input aria-label="E-mail do convite" className="min-w-0 flex-1 bg-transparent text-sm outline-none sm:text-base" id="activation-email" readOnly type="email" value={email} /><span className="shrink-0 text-xs text-slate-400 sm:text-xl">Somente leitura</span></div></div>;
 }
 
 function PasswordField({ id, label, onChange, onToggle, showPassword, value }: Readonly<{ id: string; label: string; onChange: (value: string) => void; onToggle: () => void; showPassword: boolean; value: string }>) {

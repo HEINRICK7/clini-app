@@ -60,7 +60,7 @@ export function QualifiedSignatureWorkspace() {
   }
 
   return <section className="grid gap-4 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
-    <Card className="p-5 sm:p-6">
+    <Card className="p-4 sm:p-6">
       <p className="text-sm font-semibold text-primary">Integridade clínica</p>
       <h2 className="mt-1 text-xl font-bold tracking-tight">Assinatura qualificada</h2>
       <p className="mt-2 text-sm leading-6 text-muted-foreground">Preparamos somente documentos fechados e preservamos a versão e o SHA-256. Nenhum checksum é tratado como assinatura.</p>
@@ -79,8 +79,8 @@ export function QualifiedSignatureWorkspace() {
         {message ? <p aria-live="polite" className="rounded-xl bg-cyan-50 px-3 py-2 text-sm leading-5 text-brand-navy">{message}</p> : null}
       </div>
     </Card>
-    <Card className="p-5 sm:p-6">
-      <div className="flex items-end justify-between gap-3"><div><p className="text-sm font-semibold text-primary">Evidências</p><h2 className="mt-1 text-xl font-bold tracking-tight">Solicitações preservadas</h2></div><span className="rounded-full bg-surface-muted px-2.5 py-1 text-xs font-bold text-muted-foreground">{signatures.length}</span></div>
+    <Card className="p-4 sm:p-6">
+      <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-sm font-semibold text-primary">Evidências</p><h2 className="mt-1 text-xl font-bold tracking-tight">Solicitações preservadas</h2></div><span className="rounded-full bg-surface-muted px-2.5 py-1 text-xs font-bold text-muted-foreground">{signatures.length}</span></div>
       {!patientId ? <p className="mt-4 rounded-xl border border-dashed border-border px-4 py-5 text-sm text-muted-foreground">Selecione um paciente para consultar solicitações.</p> : null}
       <div className="mt-4 grid gap-3">{signatures.map((signature) => <SignatureCard key={signature.id} signature={signature} selected={signature.id === selectedSignature?.id} onSelect={() => setDocumentId(signature.clinicalDocumentId)} />)}</div>
     </Card>
@@ -88,5 +88,5 @@ export function QualifiedSignatureWorkspace() {
 }
 
 function SignatureCard({ signature, selected, onSelect }: { signature: QualifiedSignatureRequest; selected: boolean; onSelect: () => void }) {
-  return <button className={`rounded-2xl border p-4 text-left ${selected ? "border-primary bg-cyan-50/30" : "border-border"}`} onClick={onSelect} type="button"><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-wide text-primary">ICP-Brasil</p><h3 className="mt-1 font-bold">Documento · v{signature.documentVersion}</h3></div><span className="text-xs text-muted-foreground">{signature.status}</span></div><p className="mt-2 break-all text-[11px] text-muted-foreground">SHA-256: {signature.documentContentSha256}</p><p className="mt-2 text-xs text-muted-foreground">{signature.status === "READY" ? "Pronto para integração com o provedor." : signature.cancellationReason ?? signature.externalRequestId ?? "Evidência disponível"}</p></button>;
+  return <button className={`rounded-2xl border p-4 text-left ${selected ? "border-primary bg-cyan-50/30" : "border-border"}`} onClick={onSelect} type="button"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-wide text-primary">ICP-Brasil</p><h3 className="mt-1 font-bold">Documento · v{signature.documentVersion}</h3></div><span className="text-xs text-muted-foreground">{signature.status}</span></div><p className="mt-2 break-all text-[11px] text-muted-foreground">SHA-256: {signature.documentContentSha256}</p><p className="mt-2 text-xs text-muted-foreground">{signature.status === "READY" ? "Pronto para integração com o provedor." : signature.cancellationReason ?? signature.externalRequestId ?? "Evidência disponível"}</p></button>;
 }

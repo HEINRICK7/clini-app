@@ -11,8 +11,6 @@ FROM node:24-alpine AS build
 
 WORKDIR /app
 
-RUN corepack enable
-
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY . .
 
@@ -21,7 +19,7 @@ ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL
 ARG CLINI_INTERNAL_API_URL=http://backend:8080
 ENV CLINI_INTERNAL_API_URL=$CLINI_INTERNAL_API_URL
 
-RUN pnpm build
+RUN ./node_modules/.bin/next build --webpack
 
 FROM node:24-alpine AS runtime
 

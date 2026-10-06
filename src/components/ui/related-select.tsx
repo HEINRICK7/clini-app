@@ -42,14 +42,14 @@ export function RelatedSelect({ label, value, onChange, options, placeholder = "
   const isEmpty = !loading && !hasOptions;
   const canAdd = isEmpty && !disabled && (emptyHref || emptyAction);
 
-  return <div className="grid gap-1.5 text-sm font-semibold">
-    <div className="flex items-center justify-between gap-3">
+  return <div className="grid min-w-0 gap-1.5 text-sm font-semibold">
+    <div className="flex min-w-0 flex-wrap items-center justify-between gap-1.5">
       <label htmlFor={fieldId}>{label}</label>
       {canAdd ? emptyAction ? <button className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-lg px-2 text-xs font-bold text-primary hover:bg-blue-50" onClick={emptyAction.onClick} type="button"><Plus aria-hidden={true} className="h-4 w-4" />{emptyAction.label}</button> : <Link className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-lg px-2 text-xs font-bold text-primary hover:bg-blue-50" href={emptyHref!}><Plus aria-hidden={true} className="h-4 w-4" />{emptyLabel}</Link> : null}
     </div>
     <div className="relative">
       {Icon ? <Icon aria-hidden={true} className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-primary" /> : null}
-      <select className={`min-h-12 w-full rounded-xl border border-border bg-surface px-4 text-base font-normal outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-muted-foreground ${Icon ? "pl-10" : ""}`} disabled={disabled || loading || !hasOptions} id={fieldId} onChange={(event) => onChange(event.target.value)} required={required} value={value}>
+      <select className={`min-h-12 min-w-0 w-full rounded-xl border border-border bg-surface px-3 text-base font-normal outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-muted-foreground sm:px-4 ${Icon ? "pl-10" : ""}`} disabled={disabled || loading || !hasOptions} id={fieldId} onChange={(event) => onChange(event.target.value)} required={required} value={value}>
         <option value="">{loading ? "Carregando…" : hasOptions ? placeholder : "Nenhum item cadastrado"}</option>
         {options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
       </select>
