@@ -163,6 +163,16 @@ test("GF-08 fluxo do dentista: consultório, paciente, agenda, dente e tratament
   if (previousPrimary) expect(units.find((item) => item.id === previousPrimary.id)?.primary).toBe(true);
   if (!unit) throw new Error("O consultório de teste não apareceu na lista.");
 
+  await page.goto("/select-unit");
+  const unitSearch = page.getByLabel("Buscar consultório");
+  if (units.filter((item) => item.status === "ACTIVE").length > 12) {
+    await expect(unitSearch).toBeVisible();
+    await unitSearch.fill(unitName);
+  }
+  await page.getByRole("button", { name: new RegExp(unitName) }).click();
+  await page.getByRole("button", { name: "Continuar", exact: true }).click();
+  await expect(page).toHaveURL((url) => url.pathname === "/");
+
   await page.goto("/patients");
   await page.getByRole("button", { name: "Adicionar paciente" }).click();
   await page.getByLabel("Unit atual *").selectOption(unit.id);
@@ -233,7 +243,9 @@ test("GF-08 fluxo do dentista: consultório, paciente, agenda, dente e tratament
   await page.getByLabel("Motivo e contexto").fill("TESTE HOMOLOG: avaliação demonstrativa do dente 16.");
   await page.getByRole("button", { name: "Continuar", exact: true }).click();
   await page.getByText("Procedimentos", { exact: true }).first().waitFor();
-  await page.getByRole("checkbox").check();
+  const configuredProcedure = page.getByRole("checkbox", { name: procedureName });
+  await expect(configuredProcedure).toHaveCount(1);
+  await configuredProcedure.check();
   await page.getByRole("button", { name: "Continuar", exact: true }).click();
   await page.getByRole("heading", { name: "Odontograma visual" }).waitFor();
   await page.locator('[role="option"][aria-label="Dente 16"]').click();

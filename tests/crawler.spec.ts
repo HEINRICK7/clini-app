@@ -2,8 +2,11 @@ import { allowExpectedConsoleError, api, assertNoHorizontalOverflow, createE2EFi
 
 const routes = [
   "/",
+  "/select-unit",
   "/agenda",
+  "/agenda/new",
   "/patients",
+  "/appointments/start",
   "/more",
   "/more?section=units",
   "/more?section=records",

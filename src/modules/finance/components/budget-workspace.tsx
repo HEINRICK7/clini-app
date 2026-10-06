@@ -37,7 +37,7 @@ export function BudgetWorkspace() {
   const units = useMemo(() => (unitsQuery.data ?? []).filter((unit) => unit.status === "ACTIVE"), [unitsQuery.data]);
   const patients = useMemo(() => (patientsQuery.data?.items ?? []).filter((patient) => patient.status === "ACTIVE"), [patientsQuery.data]);
   const effectiveUnitId = unitId || units[0]?.id || "";
-  const catalogQuery = useQuery({ queryKey: ["catalog-procedures", "budget", effectiveUnitId], queryFn: () => catalog.listCatalogProcedures({ unitId: effectiveUnitId }), enabled: Boolean(effectiveUnitId), retry: false });
+  const catalogQuery = useQuery({ queryKey: ["catalog-procedures", "budget", effectiveUnitId], queryFn: () => catalog.listCatalogProcedures({ unitId: effectiveUnitId, configuredOnly: true }), enabled: Boolean(effectiveUnitId), retry: false });
   const budgetsQuery = useQuery({ queryKey: ["budgets", patientId, unitId, status, budgetPage], queryFn: () => financeBudgets.listBudgets({ patientId: patientId || undefined, unitId: unitId || undefined, status: status || undefined, page: budgetPage }), retry: false });
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["budgets"] });
   const mutationError = (error: unknown) => setMessage(apiErrorMessage(error, "Não foi possível concluir a operação no orçamento."));

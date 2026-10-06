@@ -44,7 +44,7 @@ export function AppointmentFlowWorkspace() {
     return [...new Map([...contextual, ...listed].map((item) => [item.id, item])).values()];
   }, [patientsQuery.data, requestedPatientQuery.data]);
   const patient = requestedPatientQuery.data ?? patients.find((item) => item.id === patientId);
-  const catalogQuery = useQuery({ queryKey: ["catalog-procedures", "appointment-flow", patient?.currentUnitId], queryFn: () => catalog.listCatalogProcedures({ unitId: patient?.currentUnitId }), enabled: Boolean(patient?.currentUnitId), retry: false });
+  const catalogQuery = useQuery({ queryKey: ["catalog-procedures", "appointment-flow", patient?.currentUnitId], queryFn: () => catalog.listCatalogProcedures({ unitId: patient?.currentUnitId, configuredOnly: true }), enabled: Boolean(patient?.currentUnitId), retry: false });
   const finishMutation = useMutation({
     mutationFn: () => clinical.completeAppointment({ patientId, unitId: patient?.currentUnitId ?? "", content: buildEvolutionContent({ context, observations, procedures: catalogQuery.data?.items.filter((item) => selectedProcedureIds.includes(item.id)).map((item) => item.name) ?? [], nextStep, returnDays }), appointmentId: searchParams.get("appointmentId") ?? undefined, nextStep, returnAppointment: nextStep === "return" ? { startsAt: instant(returnDate, returnStart), endsAt: instant(returnDate, returnEnd) } : undefined }),
     onSuccess: async (result) => {

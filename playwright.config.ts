@@ -4,7 +4,7 @@ export default defineConfig({
   testDir: "./tests",
   fullyParallel: false,
   forbidOnly: Boolean(process.env.CI),
-  retries: process.env.CI ? 2 : 0,
+  retries: process.env.CI ? 1 : 0,
   outputDir: "test-results/playwright",
   reporter: process.env.CI
     ? [["line"], ["html", { outputFolder: "test-results/report", open: "never" }], ["junit", { outputFile: "test-results/junit.xml" }]]
@@ -13,7 +13,7 @@ export default defineConfig({
     baseURL: process.env.CLINI_FRONTEND_URL ?? "http://localhost:3000",
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
-    video: "retain-on-failure",
+    video: "off",
     locale: "pt-BR",
     timezoneId: "America/Fortaleza",
     launchOptions: process.env.CLINI_E2E_BROWSER_PATH

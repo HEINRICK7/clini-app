@@ -26,7 +26,7 @@ export function CliniOdontogram({ patientId, unitId, appointmentId, readOnly = f
   const odontogramRootRef = useRef<HTMLDivElement>(null);
   const odontogramQuery = useQuery({ queryKey: ["patient-odontogram", patientId], queryFn: () => clinicalOdontograms.getPatientOdontogram(patientId), enabled: Boolean(patientId), retry: false });
   const historyQuery = useQuery({ queryKey: ["tooth-history", patientId, activeTooth], queryFn: () => clinicalOdontograms.getToothHistory(patientId, activeTooth ?? ""), enabled: Boolean(patientId && activeTooth), retry: false });
-  const proceduresQuery = useQuery({ queryKey: ["catalog-procedures", unitId], queryFn: () => catalog.listCatalogProcedures({ unitId }), enabled: Boolean(unitId && !readOnly), retry: false });
+  const proceduresQuery = useQuery({ queryKey: ["catalog-procedures", unitId], queryFn: () => catalog.listCatalogProcedures({ unitId, configuredOnly: true }), enabled: Boolean(unitId && !readOnly), retry: false });
   const treatmentsQuery = useQuery({ queryKey: ["patient-treatments", patientId], queryFn: () => clinicalTreatments.listTreatments(patientId), enabled: Boolean(patientId && !readOnly), retry: false });
   const summaries = summaryMap(odontogramQuery.data?.teeth ?? []);
   const saveMutation = useMutation({

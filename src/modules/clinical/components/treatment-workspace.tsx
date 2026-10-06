@@ -36,7 +36,7 @@ export function TreatmentWorkspace() {
     return [...new Map([...contextual, ...listed].map((patient) => [patient.id, patient])).values()];
   }, [patientsQuery.data, requestedPatientQuery.data]);
   const selectedPatient = requestedPatientQuery.data ?? patients.find((patient) => patient.id === patientId);
-  const catalogQuery = useQuery({ queryKey: ["catalog-procedures", "treatment", selectedPatient?.currentUnitId], queryFn: () => catalog.listCatalogProcedures({ unitId: selectedPatient?.currentUnitId }), enabled: Boolean(selectedPatient?.currentUnitId), retry: false });
+  const catalogQuery = useQuery({ queryKey: ["catalog-procedures", "treatment", selectedPatient?.currentUnitId], queryFn: () => catalog.listCatalogProcedures({ unitId: selectedPatient?.currentUnitId, configuredOnly: true }), enabled: Boolean(selectedPatient?.currentUnitId), retry: false });
   const treatmentsQuery = useQuery({ queryKey: ["treatments", patientId], queryFn: () => clinicalTreatments.listTreatments(patientId), enabled: Boolean(patientId), retry: false });
   const performedQuery = useQuery({ queryKey: ["performed-procedures", selectedTreatmentId], queryFn: () => clinicalTreatments.listPerformedProcedures(selectedTreatmentId), enabled: Boolean(selectedTreatmentId), retry: false });
   const refreshTreatments = () => queryClient.invalidateQueries({ queryKey: ["treatments", patientId] });

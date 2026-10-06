@@ -33,10 +33,11 @@ const pageSchema = z.object({
 
 export type CatalogProcedure = z.infer<typeof procedureSchema>;
 
-export async function listCatalogProcedures(input: { unitId?: string; query?: string; includeArchived?: boolean } = {}) {
+export async function listCatalogProcedures(input: { unitId?: string; query?: string; includeArchived?: boolean; configuredOnly?: boolean } = {}) {
   const fetchPage = async (page: number) => {
     const params = new URLSearchParams({ page: String(page), size: "50" });
     if (input.unitId) params.set("unitId", input.unitId);
+    if (input.configuredOnly) params.set("configuredOnly", "true");
     if (input.query?.trim()) params.set("q", input.query.trim());
     if (!input.includeArchived) params.set("status", "ACTIVE");
     return pageSchema.parse(await apiRequest<unknown>(`/catalog/procedures?${params.toString()}`));

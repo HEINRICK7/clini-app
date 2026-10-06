@@ -37,7 +37,7 @@ export function NewAppointmentScreen() {
   const patients = [...new Map([...(requestedPatientQuery.data?.status === "ACTIVE" ? [requestedPatientQuery.data] : []), ...listedPatients].map((item) => [item.id, item])).values()];
   const patient = requestedPatientQuery.data ?? patients.find((item) => item.id === patientId);
   const effectiveUnitId = unitId || patient?.currentUnitId || unitsQuery.data?.find((unit) => unit.primary && unit.status === "ACTIVE")?.id || "";
-  const proceduresQuery = useQuery({ queryKey: ["catalog-procedures", "new-appointment", effectiveUnitId], queryFn: () => catalog.listCatalogProcedures({ unitId: effectiveUnitId }), enabled: Boolean(effectiveUnitId), retry: false });
+  const proceduresQuery = useQuery({ queryKey: ["catalog-procedures", "new-appointment", effectiveUnitId], queryFn: () => catalog.listCatalogProcedures({ unitId: effectiveUnitId, configuredOnly: true }), enabled: Boolean(effectiveUnitId), retry: false });
   const mutation = useMutation({
     mutationFn: () => scheduling.createAppointment({ unitId: effectiveUnitId, patientId, startsAt: instant(date, start), endsAt: instant(date, end), type, fitIn: false, notes: composeAppointmentNotes(notes, proceduresQuery.data?.items.find((item) => item.id === procedureId)?.name) }),
     onSuccess: async () => {

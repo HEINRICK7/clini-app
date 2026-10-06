@@ -72,10 +72,8 @@ export async function loginAsOwner(page: Page) {
     page.getByRole("button", { name: "Entrar" }).click(),
   ]);
   if (new URL(page.url()).pathname === "/select-unit") {
-    await Promise.all([
-      page.waitForURL((url) => url.pathname === "/"),
-      page.getByRole("button", { name: "Continuar" }).click(),
-    ]);
+    await page.goto("/");
+    await expect(page.getByRole("navigation", { name: "Navegação principal" })).toBeVisible();
   }
 }
 
@@ -112,23 +110,32 @@ export function expectStatus<T>(result: ApiResult<T>, expected: number): T {
 
 export async function createE2EFixture(page: Page): Promise<E2EFixture> {
   const suffix = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
-  const unit = expectStatus(await api<{ id: string }>(page, "/units", {
-    method: "POST",
-    body: { name: `E2E Unit ${suffix}`, city: "Fortaleza" },
-  }), 201);
+  const units = expectStatus(await api<Array<{ id: string; primary: boolean; status: string }>>(page, "/units"), 200);
+  let unit = units.find((item) => item.primary && item.status === "ACTIVE") ?? units.find((item) => item.status === "ACTIVE");
+  if (!unit) {
+    unit = expectStatus(await api<{ id: string; primary: boolean; status: string }>(page, "/units", {
+      method: "POST",
+      body: { name: `E2E Unit ${suffix}`, city: "Fortaleza" },
+    }), 201);
+  }
   const patientName = `E2E Paciente ${suffix}`;
   const patient = expectStatus(await api<{ id: string }>(page, "/patients", {
     method: "POST",
     body: { currentUnitId: unit.id, fullName: patientName, email: `e2e-${suffix}@example.com` },
   }), 201);
-  const procedure = expectStatus(await api<{ id: string }>(page, "/catalog/procedures", {
-    method: "POST",
-    body: { name: `E2E Procedimento ${suffix}`, description: "Procedimento criado apenas para teste automatizado." },
-  }), 201);
-  expectStatus(await api(page, `/catalog/procedures/${procedure.id}/units/${unit.id}`, {
-    method: "PUT",
-    body: { priceCents: 10000, durationMinutes: 30 },
-  }), 200);
+  const catalog = expectStatus(await api<{ items: Array<{ id: string }> }>(page,
+    `/catalog/procedures?unitId=${unit.id}&configuredOnly=true&status=ACTIVE&page=0&size=1`), 200);
+  let procedure = catalog.items[0];
+  if (!procedure) {
+    procedure = expectStatus(await api<{ id: string }>(page, "/catalog/procedures", {
+      method: "POST",
+      body: { name: `E2E Procedimento ${suffix}`, description: "Procedimento criado apenas para teste automatizado." },
+    }), 201);
+    expectStatus(await api(page, `/catalog/procedures/${procedure.id}/units/${unit.id}`, {
+      method: "PUT",
+      body: { priceCents: 10000, durationMinutes: 30 },
+    }), 200);
+  }
   return { unitId: unit.id, patientId: patient.id, procedureId: procedure.id, patientName };
 }
 
