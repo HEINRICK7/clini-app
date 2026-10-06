@@ -45,14 +45,24 @@ test("GF-04 novo paciente: cadastro feito pela interface aparece na lista", asyn
   await expect(page.getByRole("heading", { name: patientName })).toBeVisible();
 });
 
-test("GF-05 agenda: cria atendimento e o exibe no período selecionado", async ({ page }) => {
+test("GF-05 agenda: cria atendimento e o exibe no período selecionado", async ({ page }, testInfo) => {
   await loginAsOwner(page);
   const fixture = await createE2EFixture(page);
+  const projectDay = ({ desktop: 1, tablet: 2, "mobile-375": 3, "mobile-390": 4 } as Record<string, number>)[testInfo.project.name] ?? 5;
+  const appointmentDayOffset = projectDay + testInfo.retry * 7;
+  const appointmentDate = await page.evaluate((dayOffset) => {
+    const date = new Date();
+    date.setDate(date.getDate() + dayOffset);
+    const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Fortaleza", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(date);
+    const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+    return `${values.year}-${values.month}-${values.day}`;
+  }, appointmentDayOffset);
 
   await page.goto(`/agenda?patientId=${fixture.patientId}`);
   await expect(page.getByRole("heading", { name: "Adicionar à agenda" })).toBeVisible();
   await page.getByLabel("Local de atendimento").selectOption(fixture.unitId);
   await page.getByLabel("Paciente").selectOption(fixture.patientId);
+  await page.locator('input[type="date"]').first().fill(appointmentDate);
   await page.getByRole("textbox", { name: "Início", exact: true }).fill("09:00");
   await page.getByRole("textbox", { name: "Fim", exact: true }).fill("10:00");
   await page.getByRole("button", { name: "Criar atendimento" }).click();
@@ -142,7 +152,7 @@ test("GF-07 odontograma: mantém o status em andamento do tratamento no dente", 
   expect(odontogram.teeth.find((tooth) => tooth.toothId === "16")).toMatchObject({ hasOpenPlanning: false, hasActiveTreatment: true });
 });
 
-test("GF-08 fluxo do dentista: consultório, paciente, agenda, dente e tratamento concluído", async ({ page }) => {
+test("GF-08 fluxo do dentista: consultório, paciente, agenda, dente e tratamento concluído", async ({ page }, testInfo) => {
   await loginAsOwner(page);
   const unitsBefore = expectStatus(await api<Array<{ id: string; name: string; primary: boolean; status: string }>>(page, "/units"), 200);
   const previousPrimary = unitsBefore.find((unit) => unit.primary);
@@ -219,13 +229,15 @@ test("GF-08 fluxo do dentista: consultório, paciente, agenda, dente e tratament
   const planned = createdTreatment?.plannedProcedures[0];
   if (!planned) throw new Error("O procedimento planejado não apareceu no tratamento.");
 
-  const appointmentDate = await page.evaluate(() => {
+  const projectDay = ({ desktop: 1, tablet: 2, "mobile-375": 3, "mobile-390": 4 } as Record<string, number>)[testInfo.project.name] ?? 5;
+  const appointmentDayOffset = projectDay + testInfo.retry * 7;
+  const appointmentDate = await page.evaluate((dayOffset) => {
     const date = new Date();
-    date.setDate(date.getDate() + 1);
+    date.setDate(date.getDate() + dayOffset);
     const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Fortaleza", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(date);
     const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
     return `${values.year}-${values.month}-${values.day}`;
-  });
+  }, appointmentDayOffset);
   await page.goto(`/agenda?patientId=${patient.id}`);
   await page.getByLabel("Local de atendimento").selectOption(unit.id);
   await page.getByLabel("Paciente").selectOption(patient.id);
@@ -255,7 +267,7 @@ test("GF-08 fluxo do dentista: consultório, paciente, agenda, dente e tratament
   await page.getByLabel("Descrição (opcional)").fill("TESTE HOMOLOG: dente 16 em tratamento.");
   await page.getByRole("button", { name: "Salvar planejamento", exact: true }).click();
   await expect(page.locator('[aria-live="polite"]').first()).toContainText("Registro salvo no dente 16");
-  await page.getByRole("button", { name: "Continuar", exact: true }).click();
+  await page.getByRole("button", { name: "Continuar atendimento", exact: true }).click();
   await page.getByLabel("Observações do atendimento").fill("TESTE HOMOLOG: validação sintética concluída.");
   await page.getByRole("button", { name: "Continuar", exact: true }).click();
   await page.getByRole("button", { name: "Continuar tratamento", exact: true }).click();

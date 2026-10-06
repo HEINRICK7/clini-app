@@ -41,6 +41,8 @@ test("resposta 500 da API é observável e a tela mantém uma mensagem compreens
 
 test("logout invalida a sessão e voltar não restaura uma tela protegida", async ({ page }) => {
   await loginAsOwner(page);
+  // Voltar após o logout pode disparar uma requisição protegida, que deve responder 401.
+  allowExpectedConsoleError(page, /status of 401/);
   await page.getByRole("button", { name: "Sair da conta" }).click();
   await expect(page).toHaveURL(/\/login$/);
   await page.goBack();

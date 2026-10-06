@@ -13,7 +13,7 @@ import { permanentFdiTeeth, summaryMap } from "../mappers/odontogram-view-mapper
 import { ToothDetailsSheet } from "./tooth-details-sheet";
 import type { ToothAction } from "./tooth-action-menu";
 
-export function CliniOdontogram({ patientId, unitId, appointmentId, readOnly = false, onFinishAppointment }: { patientId: string; unitId: string; appointmentId?: string; readOnly?: boolean; onFinishAppointment?: () => void }) {
+export function CliniOdontogram({ patientId, unitId, appointmentId, readOnly = false, onFinishAppointment, onContinueAppointment }: { patientId: string; unitId: string; appointmentId?: string; readOnly?: boolean; onFinishAppointment?: () => void; onContinueAppointment?: () => void }) {
   const { clinicalOdontograms, catalog, clinicalTreatments } = useCliniServices();
   const queryClient = useQueryClient();
   const [selectedTeeth, setSelectedTeeth] = useState<string[]>([]);
@@ -63,6 +63,8 @@ export function CliniOdontogram({ patientId, unitId, appointmentId, readOnly = f
     if (nextAction === "another") { setSelectedTeeth([]); setActiveTooth(null); setAction(null); setShowNextSteps(false); return; }
     if (nextAction === "finish") { onFinishAppointment?.(); return; }
     setShowNextSteps(false);
+    if (onContinueAppointment) onContinueAppointment();
+    else setActiveTooth(null);
   }
 
   function handleActionChange(nextAction: ToothAction) {
@@ -95,7 +97,7 @@ export function CliniOdontogram({ patientId, unitId, appointmentId, readOnly = f
       <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground" aria-label="Legenda do odontograma">{conditionGroups.map((group) => <span className="inline-flex items-center gap-1.5" key={group.label}><i className="h-3 w-3 rounded border" style={{ backgroundColor: group.fillColor, borderColor: group.outlineColor }} />{group.label}</span>)}<span className="inline-flex items-center gap-1.5"><i className="h-3 w-3 rounded border-2 border-primary" />Selecionado</span></div>
       {message ? <p aria-live="polite" className="mt-4 rounded-xl bg-cyan-50 px-3 py-2 text-sm text-brand-navy">{message}</p> : null}
     </Card>
-    {activeTooth ? <ToothDetailsSheet action={action} canFinish={Boolean(onFinishAppointment)} historyLoading={historyQuery.isLoading} input={input} onActionChange={handleActionChange} onClose={() => setActiveTooth(null)} onInputChange={setInput} onSavedAction={handleSavedAction} onSubmit={() => saveMutation.mutate()} patientId={patientId} procedures={proceduresQuery.data?.items ?? []} proceduresLoading={proceduresQuery.isPending} readOnly={readOnly} records={historyQuery.data ?? []} saving={saveMutation.isPending} selectedCount={selectedTeeth.length} selectedTeeth={selectedTeeth} showNextSteps={showNextSteps} toothId={activeTooth} treatments={treatmentsQuery.data?.items ?? []} treatmentsLoading={treatmentsQuery.isPending} /> : <Card className="hidden p-5 lg:block"><p className="text-sm font-semibold text-primary">Detalhes do dente</p><p className="mt-2 text-sm leading-6 text-muted-foreground">Selecione um dente no mapa para abrir o histórico e registrar uma condição, procedimento, planejamento ou nota.</p></Card>}
+    {activeTooth ? <ToothDetailsSheet action={action} canFinish={Boolean(onFinishAppointment)} continueLabel={onContinueAppointment ? "Continuar atendimento" : "Continuar examinando"} historyLoading={historyQuery.isLoading} input={input} onActionChange={handleActionChange} onClose={() => setActiveTooth(null)} onInputChange={setInput} onSavedAction={handleSavedAction} onSubmit={() => saveMutation.mutate()} patientId={patientId} procedures={proceduresQuery.data?.items ?? []} proceduresLoading={proceduresQuery.isPending} readOnly={readOnly} records={historyQuery.data ?? []} saving={saveMutation.isPending} selectedCount={selectedTeeth.length} selectedTeeth={selectedTeeth} showNextSteps={showNextSteps} toothId={activeTooth} treatments={treatmentsQuery.data?.items ?? []} treatmentsLoading={treatmentsQuery.isPending} /> : <Card className="hidden p-5 lg:block"><p className="text-sm font-semibold text-primary">Detalhes do dente</p><p className="mt-2 text-sm leading-6 text-muted-foreground">Selecione um dente no mapa para abrir o histórico e registrar uma condição, procedimento, planejamento ou nota.</p></Card>}
   </section>;
 }
 

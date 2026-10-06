@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Plus, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import type { CatalogProcedure, Treatment, ToothRecord } from "@/app/services";
 import { toothMetadata } from "../mappers/odontogram-view-mapper";
@@ -24,7 +24,7 @@ function recordText(record: ToothRecord) {
   return record.description || typeLabels[record.type] + " registrado";
 }
 
-export function ToothDetailsSheet({ toothId, selectedCount, selectedTeeth, records, historyLoading, readOnly, action, input, procedures, proceduresLoading, treatments, treatmentsLoading, saving, patientId, showNextSteps, canFinish, onClose, onActionChange, onInputChange, onSubmit, onSavedAction }: {
+export function ToothDetailsSheet({ toothId, selectedCount, selectedTeeth, records, historyLoading, readOnly, action, input, procedures, proceduresLoading, treatments, treatmentsLoading, saving, patientId, showNextSteps, canFinish, continueLabel, onClose, onActionChange, onInputChange, onSubmit, onSavedAction }: {
   toothId: string;
   selectedCount: number;
   selectedTeeth: string[];
@@ -41,6 +41,7 @@ export function ToothDetailsSheet({ toothId, selectedCount, selectedTeeth, recor
   patientId: string;
   showNextSteps: boolean;
   canFinish: boolean;
+  continueLabel: string;
   onClose: () => void;
   onActionChange: (action: ToothAction) => void;
   onInputChange: (input: ActionInput) => void;
@@ -60,6 +61,12 @@ export function ToothDetailsSheet({ toothId, selectedCount, selectedTeeth, recor
     onActionChange(nextAction);
     window.requestAnimationFrame(() => document.getElementById(`tooth-action-${toothId}`)?.scrollIntoView({ behavior: "smooth", block: "start" }));
   }
+
+  useEffect(() => {
+    if (showNextSteps) {
+      window.requestAnimationFrame(() => document.getElementById(`tooth-next-step-${toothId}`)?.scrollIntoView({ behavior: "smooth", block: "nearest" }));
+    }
+  }, [showNextSteps, toothId]);
 
   return <aside className="fixed inset-x-0 bottom-0 z-50 max-h-[min(88svh,46rem)] overflow-y-auto overscroll-contain rounded-t-3xl border border-border bg-surface p-5 pb-24 shadow-2xl lg:static lg:max-h-none lg:rounded-2xl lg:p-5 lg:pb-5 lg:shadow-sm" aria-label={`Detalhes do dente ${toothId}`}>
     <div className="flex flex-wrap items-start justify-between gap-3">
@@ -83,7 +90,7 @@ export function ToothDetailsSheet({ toothId, selectedCount, selectedTeeth, recor
 
     <section className="mt-5 border-t border-border pt-4"><div className="flex flex-wrap items-center justify-between gap-3"><p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">Histórico completo</p><span className="text-xs text-muted-foreground">{records.length} registro(s)</span></div>{historyLoading ? <p className="mt-3 text-sm text-muted-foreground">Carregando histórico…</p> : <div className="mt-3"><ToothHistory loading={false} patientId={patientId} records={showFullHistory ? records : records.slice(0, 5)} />{records.length > 5 ? <button className="mt-3 w-full rounded-xl border border-border px-3 py-2 text-sm font-bold text-primary hover:bg-surface-muted" onClick={() => setShowFullHistory((value) => !value)} type="button">{showFullHistory ? "Mostrar menos" : "Ver histórico completo"}</button> : null}</div>}</section>
 
-    {showNextSteps && !readOnly && onSavedAction ? <section className="mt-5 border-t border-border pt-4"><p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">Próximo passo</p><p className="mt-2 text-sm text-muted-foreground">Registro salvo no dente {toothId}. Continue o atendimento como preferir.</p><div className="mt-3 grid gap-2 sm:grid-cols-2"><NextActionButton label="Continuar examinando" onClick={() => onSavedAction("continue")} /><NextActionButton label="Adicionar ao planejamento" onClick={() => { onActionChange("PLANNING"); onSavedAction("planning"); }} /><NextActionButton label="Registrar outro dente" onClick={() => onSavedAction("another")} />{canFinish ? <NextActionButton label="Finalizar atendimento" onClick={() => onSavedAction("finish")} /> : null}</div></section> : null}
+    {showNextSteps && !readOnly && onSavedAction ? <section className="mt-5 scroll-mt-4 border-t border-border pt-4" id={`tooth-next-step-${toothId}`}><p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">Próximo passo</p><p className="mt-2 text-sm text-muted-foreground">Registro salvo no dente {toothId}. Continue o atendimento como preferir.</p><div className="mt-3 grid gap-2 sm:grid-cols-2"><NextActionButton label={continueLabel} onClick={() => onSavedAction("continue")} /><NextActionButton label="Adicionar ao planejamento" onClick={() => { onActionChange("PLANNING"); onSavedAction("planning"); }} /><NextActionButton label="Registrar outro dente" onClick={() => onSavedAction("another")} />{canFinish ? <NextActionButton label="Finalizar atendimento" onClick={() => onSavedAction("finish")} /> : null}</div></section> : null}
   </aside>;
 }
 
