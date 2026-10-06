@@ -283,6 +283,7 @@ test("GF-08 fluxo do dentista: consultório, paciente, agenda, dente e tratament
   await expect(page.getByText("Procedimento realizado salvo como rascunho.", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Fechar realizado", exact: true }).click();
   await expect(page.getByText("Procedimento realizado fechado e preservado.", { exact: true })).toBeVisible();
+  await expect(page.getByText("COMPLETED", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Concluir tratamento", exact: true }).click();
   await expect(page.getByText("Status do tratamento atualizado.", { exact: true })).toBeVisible();
 
