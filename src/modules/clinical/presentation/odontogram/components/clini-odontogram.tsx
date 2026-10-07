@@ -109,11 +109,20 @@ export function CliniOdontogram({ patientId, unitId, appointmentId, readOnly = f
   }
 
   useEffect(() => {
-    odontogramRootRef.current?.querySelectorAll<SVGGElement>('[role="option"][aria-label^="Tooth "]').forEach((tooth) => {
-      const toothId = tooth.getAttribute("aria-label")?.replace("Tooth ", "");
-      if (toothId) tooth.setAttribute("aria-label", `Dente ${toothId}`);
-    });
-  }, [selectedTeeth, odontogramQuery.data]);
+    const root = odontogramRootRef.current;
+    if (!root) return;
+
+    const localizeToothLabels = () => {
+      root.querySelectorAll<SVGGElement>('[role="option"][aria-label^="Tooth "]').forEach((tooth) => {
+        const toothId = tooth.getAttribute("aria-label")?.replace("Tooth ", "");
+        if (toothId) tooth.setAttribute("aria-label", `Dente ${toothId}`);
+      });
+    };
+    localizeToothLabels();
+    const observer = new MutationObserver(localizeToothLabels);
+    observer.observe(root, { attributes: true, attributeFilter: ["aria-label"], childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [activeView, selectedTeeth, odontogramQuery.data]);
 
   if (activeView === "advanced") {
     if (versionedOdontogramQuery.isPending) return <Card className="p-5 text-sm text-muted-foreground">Carregando odontograma clínico…</Card>;

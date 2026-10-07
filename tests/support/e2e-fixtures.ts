@@ -37,14 +37,28 @@ export const test = base.extend({
     // eslint-disable-next-line react-hooks/rules-of-hooks
     await use(page);
 
-    const diagnostics = { consoleErrors, pageErrors, serverErrors, notFoundResponses };
-    if (consoleErrors.length || pageErrors.length || serverErrors.length) {
+    // A brand-new patient's normalized odontogram endpoint intentionally
+    // returns 404; getOdontogramIfExists maps that response to an empty chart.
+    // Chrome logs every fetch 404 to the console, so allow only the console
+    // messages backed by that exact endpoint and keep other 404s visible.
+    let expectedOdontogramNotFoundCount = notFoundResponses
+      .filter((response) => response === "404 /api/v1/clinical/odontograms")
+      .length;
+    const unexpectedConsoleErrors = consoleErrors.filter((message) => {
+      if (expectedOdontogramNotFoundCount > 0 && /status of 404/.test(message)) {
+        expectedOdontogramNotFoundCount -= 1;
+        return false;
+      }
+      return true;
+    });
+    const diagnostics = { consoleErrors, unexpectedConsoleErrors, pageErrors, serverErrors, notFoundResponses };
+    if (unexpectedConsoleErrors.length || pageErrors.length || serverErrors.length) {
       await testInfo.attach("browser-diagnostics.json", {
         body: Buffer.from(JSON.stringify(diagnostics, null, 2)),
         contentType: "application/json",
       });
     }
-    if (testInfo.status === "passed" && (consoleErrors.length || pageErrors.length || serverErrors.length)) {
+    if (testInfo.status === "passed" && (unexpectedConsoleErrors.length || pageErrors.length || serverErrors.length)) {
       throw new Error(`Falhas inesperadas no navegador: ${JSON.stringify(diagnostics)}`);
     }
   },
