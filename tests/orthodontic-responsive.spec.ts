@@ -1,39 +1,38 @@
 import { api, assertNoHorizontalOverflow, createE2EFixture, expect, expectStatus, loginAsOwner, test } from "./support/e2e-fixtures";
 
-test("arcada ortodôntica persiste o aparelho e cabe em telas móveis e tablet", async ({ page }) => {
+test("odontograma avançado salva achados por superfície no prontuário e restaura após recarregar", async ({ page }) => {
   await loginAsOwner(page);
   const fixture = await createE2EFixture(page);
-  const suffix = `${Date.now()}`;
-  const treatmentName = `E2E Ortodontia responsiva ${suffix}`;
+  const route = `/more?section=odontogram&patientId=${fixture.patientId}`;
+  await page.goto(route);
+  await expect(page.getByTestId("advanced-clinical-odontogram")).toBeVisible();
 
-  await page.goto(`/more?section=treatments&patientId=${fixture.patientId}`);
-  await expect(page.getByRole("heading", { name: "Tratamentos e procedimentos" })).toBeVisible();
-  await page.getByLabel("Tipo de tratamento").selectOption("ORTHODONTIC");
-  await page.getByLabel("Tipo de aparelho").selectOption("FIXED");
-  await page.getByLabel("Nome do tratamento").fill(treatmentName);
-  await page.getByRole("button", { name: "Criar tratamento" }).click();
-
-  const wire = page.getByTestId("orthodontic-wire");
-  await expect(wire).toBeVisible();
-  await expect(page.locator(".tooth-tile.side-view[data-tooth]")).toHaveCount(32);
-
-  const tooth11 = page.locator('.tooth-tile.side-view[data-tooth="11"]');
-  await tooth11.click();
-  await expect(page.getByTestId("orthodontic-tooth-selection")).toContainText("Dente 11 selecionado");
-  await expect(tooth11).toHaveClass(/active/);
-
-  const treatments = expectStatus(await api<{ items: Array<{ name: string; category?: string; applianceType?: string | null }> }>(
-    page,
-    `/clinical/treatments?patientId=${fixture.patientId}&size=20`,
-  ), 200);
-  expect(treatments.items).toContainEqual(expect.objectContaining({ name: treatmentName, category: "ORTHODONTIC", applianceType: "FIXED" }));
+  const tooth16 = page.locator('[role="option"][aria-label*="16"]').first();
+  await expect(tooth16).toBeVisible();
+  await tooth16.click();
+  const occlusalSurface = page.getByRole("checkbox", { name: /oclusal/i }).first();
+  await expect(occlusalSurface).toBeVisible();
+  await occlusalSurface.check();
+  await expect(page.getByTestId("save-advanced-odontogram")).toBeEnabled();
 
   for (const width of [320, 375, 414, 768]) {
     await page.setViewportSize({ width, height: 900 });
     await assertNoHorizontalOverflow(page);
-    const chart = await page.locator("[data-orthodontic-odontogram]").boundingBox();
-    const overlay = await wire.boundingBox();
-    expect(chart?.width).toBeLessThanOrEqual(width);
-    expect(overlay?.width).toBeCloseTo(chart?.width ?? 0, 0);
   }
+
+  await page.getByTestId("save-advanced-odontogram").click();
+  await expect(page.getByTestId("odontogram-save-state")).toHaveText("Tudo salvo");
+  const firstSave = expectStatus(await api<{
+    version: number;
+    chartPayload: { format: string; statusChart: { teeth: Record<string, unknown> } };
+  }>(page, `/clinical/odontograms?patientId=${fixture.patientId}`), 200);
+  expect(firstSave.version).toBe(1);
+  expect(firstSave.chartPayload.format).toBe("clini-advanced-odontogram");
+  expect(firstSave.chartPayload.statusChart.teeth["16"]).toBeTruthy();
+
+  await page.reload();
+  await expect(page.getByTestId("advanced-clinical-odontogram")).toBeVisible();
+  await expect(page.getByRole("checkbox", { name: /oclusal/i }).first()).toBeChecked();
+  const afterReload = expectStatus(await api<typeof firstSave>(page, `/clinical/odontograms?patientId=${fixture.patientId}`), 200);
+  expect(afterReload.chartPayload).toEqual(firstSave.chartPayload);
 });

@@ -6,6 +6,7 @@ test("layout responsivo: ações principais e odontograma cabem no viewport", as
 
   await page.goto(`/patients/${fixture.patientId}`);
   await page.getByRole("tab", { name: "Tratamentos" }).click();
+  await page.getByRole("tab", { name: "Atendimento e histórico" }).click();
   await expect(page.getByRole("heading", { name: "Odontograma visual" })).toBeVisible();
   await assertNoHorizontalOverflow(page);
 
@@ -78,6 +79,7 @@ test("odontograma: cada dente possui nome acessível e o painel contextual é id
   const fixture = await createE2EFixture(page);
   await page.goto(`/patients/${fixture.patientId}`);
   await page.getByRole("tab", { name: "Tratamentos" }).click();
+  await page.getByRole("tab", { name: "Atendimento e histórico" }).click();
 
   const teeth = page.locator('[role="option"]');
   await expect(teeth).toHaveCount(32);

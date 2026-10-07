@@ -5,6 +5,7 @@ test("odontograma visual mantém a composição principal estável", async ({ pa
   const fixture = await createE2EFixture(page);
   await page.goto(`/patients/${fixture.patientId}`);
   await page.getByRole("tab", { name: "Tratamentos" }).click();
+  await page.getByRole("tab", { name: "Atendimento e histórico" }).click();
 
   const heading = page.getByRole("heading", { name: "Odontograma visual" });
   await expect(heading).toBeVisible();

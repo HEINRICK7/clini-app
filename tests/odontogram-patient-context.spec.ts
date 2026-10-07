@@ -10,6 +10,7 @@ test("odontograma mantém o paciente ao abrir tratamentos pelo dente", async ({ 
   const patientId = fixture.patientId;
 
   await page.getByRole("tab", { name: "Tratamentos" }).click();
+  await page.getByRole("tab", { name: "Atendimento e histórico" }).click();
   await expect(page.getByRole("heading", { name: "Odontograma visual" })).toBeVisible();
   const tooth = page.locator('[role="option"][aria-label^="Dente "]').first();
   await expect(tooth).toBeVisible();

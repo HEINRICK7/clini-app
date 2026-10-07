@@ -1,17 +1,7 @@
 "use client";
 
-import dynamic from "next/dynamic";
-
 import type { OrthodonticApplianceType, Treatment } from "@/app/services";
 import { Card } from "@/components/ui/card";
-
-const OrthodonticApplianceOdontogram = dynamic(
-  () => import("./orthodontic-appliance-odontogram").then((module) => module.OrthodonticApplianceOdontogram),
-  {
-    ssr: false,
-    loading: () => <div aria-label="Carregando arcada dentária" className="h-28 animate-pulse rounded-xl bg-surface-muted sm:h-36" role="status" />,
-  },
-);
 
 const orthodonticTerms = /ortodont|aparelho|alinhador/i;
 
@@ -37,10 +27,10 @@ export function OrthodonticTreatmentVisual({ treatment, showChart = true }: { tr
         <span className="shrink-0 rounded-full bg-white px-2.5 py-1 text-xs font-bold text-brand-navy shadow-sm">{treatmentStatusLabel(treatment.status)}</span>
       </div>
       <h4 className="mt-1 break-words text-base font-bold text-brand-navy">{treatment.name}</h4>
-      {showChart ? <div className="mt-3 min-w-0">
-        <OrthodonticApplianceOdontogram applianceType={applianceType} />
-        <p className="mt-1 text-center text-xs font-medium text-muted-foreground">{applianceLabel(applianceType)}</p>
-      </div> : <p className="mt-2 rounded-lg bg-white/80 px-3 py-2 text-xs leading-5 text-muted-foreground">Selecione este tratamento para visualizar a arcada.</p>}
+      {showChart ? <div className="mt-3 rounded-xl border border-cyan-100 bg-white/90 p-3">
+        <p className="text-sm font-semibold text-brand-navy">{applianceLabel(applianceType)}</p>
+        <p className="mt-1 text-xs leading-5 text-muted-foreground">Bráquetes, bandas e movimentos por dente são registrados no odontograma clínico do paciente.</p>
+      </div> : <p className="mt-2 rounded-lg bg-white/80 px-3 py-2 text-xs leading-5 text-muted-foreground">Selecione este tratamento para ver o tipo de aparelho e o andamento do plano.</p>}
     </div>
 
     <div className="min-w-0 rounded-xl border border-cyan-100 bg-white/90 p-3 sm:p-4">

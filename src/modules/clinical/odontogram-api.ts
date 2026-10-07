@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { apiRequest } from "@/lib/api/client";
+import { ApiError, apiRequest } from "@/lib/api/client";
 
 const toothSummarySchema = z.object({
   toothId: z.string().regex(/^(1[1-8]|2[1-8]|3[1-8]|4[1-8])$/),
@@ -69,9 +69,16 @@ const odontogramSchema = z.object({
   createdAt: z.string(),
   versionCreatedAt: z.string(),
   teeth: z.array(toothSchema),
+  chartPayload: z.unknown().nullable().optional(),
 });
 
 export type Odontogram = z.infer<typeof odontogramSchema>;
+export type AdvancedOdontogramPayload = {
+  format: "clini-advanced-odontogram";
+  version: 1;
+  statusChart: unknown;
+  planChart: unknown;
+};
 export type OdontogramTooth = z.infer<typeof toothSchema>;
 export type OdontogramFindingType = z.infer<typeof findingSchema>["type"];
 export type OdontogramSurface = NonNullable<z.infer<typeof findingSchema>["surface"]>;
@@ -90,11 +97,16 @@ export async function getOdontogram(patientId: string): Promise<Odontogram> {
   return odontogramSchema.parse(await apiRequest<unknown>(`/clinical/odontograms?patientId=${encodeURIComponent(patientId)}`));
 }
 
-export async function createOdontogram(input: { patientId: string; unitId: string; reason?: string; teeth: OdontogramToothInput[] }): Promise<Odontogram> {
+export async function getOdontogramIfExists(patientId: string): Promise<Odontogram | null> {
+  try { return await getOdontogram(patientId); }
+  catch (error) { if (error instanceof ApiError && error.status === 404) return null; throw error; }
+}
+
+export async function createOdontogram(input: { patientId: string; unitId: string; appointmentId?: string; reason?: string; teeth: OdontogramToothInput[]; chartPayload?: AdvancedOdontogramPayload }): Promise<Odontogram> {
   return odontogramSchema.parse(await apiRequest<unknown>("/clinical/odontograms", { method: "POST", body: JSON.stringify(input) }));
 }
 
-export async function createOdontogramVersion(odontogramId: string, input: { unitId: string; reason?: string; teeth: OdontogramToothInput[] }): Promise<Odontogram> {
+export async function createOdontogramVersion(odontogramId: string, input: { unitId: string; appointmentId?: string; reason?: string; teeth: OdontogramToothInput[]; chartPayload?: AdvancedOdontogramPayload }): Promise<Odontogram> {
   return odontogramSchema.parse(await apiRequest<unknown>(`/clinical/odontograms/${odontogramId}/versions`, { method: "POST", body: JSON.stringify(input) }));
 }
 
