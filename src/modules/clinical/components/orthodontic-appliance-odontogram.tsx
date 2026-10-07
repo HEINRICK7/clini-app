@@ -26,6 +26,24 @@ export function OrthodonticApplianceOdontogram({ applianceType }: { applianceTyp
   const hostRef = useRef<HTMLDivElement>(null);
   const lastLayoutRef = useRef("");
   const [layout, setLayout] = useState<WireLayout | null>(null);
+  const [selectedTooth, setSelectedTooth] = useState<number | null>(null);
+
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!host) return;
+
+    const selectTooth = (event: MouseEvent) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const tile = target.closest<HTMLElement>(".tooth-tile.side-view[data-tooth]");
+      if (!tile || tile.classList.contains("placeholder")) return;
+      const tooth = Number(tile.dataset.tooth);
+      if (Number.isInteger(tooth)) setSelectedTooth(tooth);
+    };
+
+    host.addEventListener("click", selectTooth, true);
+    return () => host.removeEventListener("click", selectTooth, true);
+  }, []);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -82,9 +100,15 @@ export function OrthodonticApplianceOdontogram({ applianceType }: { applianceTyp
   const label = applianceLabel(applianceType);
   return <div aria-label={`${label}: arcada dentária`} className="clini-orthodontic-odontogram" data-orthodontic-odontogram ref={hostRef}>
     <div className="orthodontic-arch-caption" aria-hidden="true"><span>Arcada superior</span><span>Arcada inferior</span></div>
-    <OdontogramProvider language="pt-br" numberingSystem="FDI" readOnly themeConfig={themeConfig}>
+    <OdontogramProvider language="pt-br" numberingSystem="FDI" themeConfig={themeConfig}>
       <OdontogramChartSurface />
     </OdontogramProvider>
+    <div className="orthodontic-tooth-selection" aria-live="polite" aria-atomic="true" data-testid="orthodontic-tooth-selection">
+      {selectedTooth ? <>
+        <span><strong>Dente {selectedTooth} selecionado</strong><small>Seleção visual para consulta.</small></span>
+        <button aria-label="Limpar dente selecionado" onClick={() => setSelectedTooth(null)} type="button">Limpar</button>
+      </> : <span>Toque em um dente para selecioná-lo.</span>}
+    </div>
     {layout && layout.width > 0 && layout.height > 0 ? <svg aria-label={applianceDescription(applianceType)} className="orthodontic-wire-overlay" data-testid="orthodontic-wire" height={layout.height} role="img" viewBox={`0 0 ${layout.width} ${layout.height}`} width={layout.width}>
       {applianceType === "FIXED" ? <>
         <path className="orthodontic-wire" d={wirePath(layout.upper)} />

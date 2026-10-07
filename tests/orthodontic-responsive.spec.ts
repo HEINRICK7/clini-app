@@ -17,6 +17,11 @@ test("arcada ortodôntica persiste o aparelho e cabe em telas móveis e tablet",
   await expect(wire).toBeVisible();
   await expect(page.locator(".tooth-tile.side-view[data-tooth]")).toHaveCount(32);
 
+  const tooth11 = page.locator('.tooth-tile.side-view[data-tooth="11"]');
+  await tooth11.click();
+  await expect(page.getByTestId("orthodontic-tooth-selection")).toContainText("Dente 11 selecionado");
+  await expect(tooth11).toHaveClass(/active/);
+
   const treatments = expectStatus(await api<{ items: Array<{ name: string; category?: string; applianceType?: string | null }> }>(
     page,
     `/clinical/treatments?patientId=${fixture.patientId}&size=20`,
