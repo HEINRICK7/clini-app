@@ -333,6 +333,8 @@ test("GF-08 fluxo do dentista: consultório, paciente, agenda, dente e tratament
 
   const finalTreatments = expectStatus(await api<{ items: Array<{ id: string; status: string; plannedProcedures: Array<{ id: string; status: string }> }> }>(page, `/clinical/treatments?patientId=${patient.id}&size=20`), 200);
   expect(finalTreatments.items.find((item) => item.id === treatment.id)).toMatchObject({ status: "COMPLETED", plannedProcedures: [{ id: planned.id, status: "COMPLETED" }] });
+  const finalOdontogram = expectStatus(await api<{ teeth: Array<{ toothId: string; hasOpenPlanning: boolean; hasActiveTreatment: boolean }> }>(page, `/patients/${patient.id}/odontogram`), 200);
+  expect(finalOdontogram.teeth.find((tooth) => tooth.toothId === "16")).toMatchObject({ hasOpenPlanning: false, hasActiveTreatment: false });
   const finalPatient = expectStatus(await api<{ id: string; currentUnitId: string; status: string }>(page, `/patients/${patient.id}`), 200);
   expect(finalPatient).toMatchObject({ id: patient.id, currentUnitId: unit.id, status: "ACTIVE" });
   const agendaRange = await page.evaluate((date) => ({
