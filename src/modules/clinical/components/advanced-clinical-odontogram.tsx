@@ -2,6 +2,7 @@
 
 import {
   disablePersistence,
+  getChartMode,
   getPlanChart,
   getStatusChart,
   importStatus,
@@ -15,6 +16,7 @@ import { useEffect, useRef, useState } from "react";
 
 import type { AdvancedOdontogramPayload } from "@/modules/clinical/odontogram-api";
 import { Button } from "@/components/ui/button";
+import { OrthodonticApplianceOdontogram } from "./orthodontic-appliance-odontogram";
 import "./react-advanced-odontogram-vendor.css";
 import "./advanced-clinical-odontogram.css";
 
@@ -48,8 +50,10 @@ export function AdvancedClinicalOdontogram({ patientId, initialPayload, version,
   const [ready, setReady] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [activeChart, setActiveChart] = useState<{ mode: "status" | "plan"; chart: unknown }>({ mode: "status", chart: EMPTY_STATUS_CHART });
   const payloadRef = useRef(initialPayload);
   const savedChartSignatureRef = useRef<string | null>(null);
+  const chartCanvasRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     payloadRef.current = initialPayload;
@@ -66,10 +70,15 @@ export function AdvancedClinicalOdontogram({ patientId, initialPayload, version,
       setPlanChart(saved?.planChart ?? EMPTY_PLAN_CHART);
       setChartMode("status");
       savedChartSignatureRef.current = chartSignature(getStatusChart(), getPlanChart());
+      setActiveChart({ mode: "status", chart: cloneChart(getStatusChart()) });
       setDirty(false);
       setReady(true);
       unsubscribe = onStateChange(() => {
-        setDirty(chartSignature(getStatusChart(), getPlanChart()) !== savedChartSignatureRef.current);
+        const mode = getChartMode();
+        const statusChart = getStatusChart();
+        const planChart = getPlanChart();
+        setDirty(chartSignature(statusChart, planChart) !== savedChartSignatureRef.current);
+        setActiveChart({ mode, chart: cloneChart(mode === "plan" ? planChart : statusChart) });
       });
     }, 0);
 
@@ -118,7 +127,7 @@ export function AdvancedClinicalOdontogram({ patientId, initialPayload, version,
     {saveError ? <p aria-live="assertive" className="rounded-lg border border-danger/20 bg-red-50 px-3 py-2 text-sm text-danger">{saveError}</p> : null}
     <p className="text-sm leading-5 text-muted-foreground">{readOnly ? "Visualização do prontuário. Para registrar ou alterar informações, abra a aba Tratamentos." : "Selecione um dente para registrar condições, tratamentos e planejamento. Salve para atualizar o prontuário."}</p>
     <div className="clini-advanced-chart-library min-w-0 rounded-xl border border-border bg-white p-2 sm:p-4" data-testid="advanced-odontogram-library">
-      <div className="min-w-0">
+      <div className="clini-advanced-chart-canvas min-w-0" ref={chartCanvasRef}>
         <OdontogramShell
           enableIcdas
           language="pt-br"
@@ -127,6 +136,7 @@ export function AdvancedClinicalOdontogram({ patientId, initialPayload, version,
           showOrthoCard
           themeConfig={themeConfig}
         />
+        <OrthodonticApplianceOdontogram chartMode={activeChart.mode} chartState={activeChart.chart} targetRef={chartCanvasRef} />
       </div>
     </div>
   </section>;

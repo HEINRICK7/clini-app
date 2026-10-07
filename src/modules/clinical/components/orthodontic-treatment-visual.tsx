@@ -1,6 +1,7 @@
 "use client";
 
 import type { OrthodonticApplianceType, Treatment } from "@/app/services";
+import Link from "next/link";
 import { Card } from "@/components/ui/card";
 
 const orthodonticTerms = /ortodont|aparelho|alinhador/i;
@@ -13,7 +14,7 @@ export function isOrthodonticTreatment(treatment: Pick<Treatment, "category" | "
   ].join(" "));
 }
 
-export function OrthodonticTreatmentVisual({ treatment, showChart = true }: { treatment: Treatment; showChart?: boolean }) {
+export function OrthodonticTreatmentVisual({ treatment }: { treatment: Treatment }) {
   const procedures = treatment.plannedProcedures.filter((procedure) => procedure.status !== "CANCELED");
   const completed = procedures.filter((procedure) => procedure.status === "COMPLETED").length;
   const progress = procedures.length ? Math.round((completed / procedures.length) * 100) : 0;
@@ -27,10 +28,13 @@ export function OrthodonticTreatmentVisual({ treatment, showChart = true }: { tr
         <span className="shrink-0 rounded-full bg-white px-2.5 py-1 text-xs font-bold text-brand-navy shadow-sm">{treatmentStatusLabel(treatment.status)}</span>
       </div>
       <h4 className="mt-1 break-words text-base font-bold text-brand-navy">{treatment.name}</h4>
-      {showChart ? <div className="mt-3 rounded-xl border border-cyan-100 bg-white/90 p-3">
+      <div className="mt-3 rounded-xl border border-cyan-100 bg-white/90 p-3">
         <p className="text-sm font-semibold text-brand-navy">{applianceLabel(applianceType)}</p>
-        <p className="mt-1 text-xs leading-5 text-muted-foreground">Bráquetes, bandas e movimentos por dente são registrados no odontograma clínico do paciente.</p>
-      </div> : <p className="mt-2 rounded-lg bg-white/80 px-3 py-2 text-xs leading-5 text-muted-foreground">Selecione este tratamento para ver o tipo de aparelho e o andamento do plano.</p>}
+        <p className="mt-1 text-xs leading-5 text-muted-foreground">Consulte e registre bráquetes, bandas e movimentos por dente no odontograma clínico.</p>
+        <Link className="mt-3 inline-flex min-h-11 items-center rounded-lg border border-cyan-200 px-3 text-sm font-semibold text-brand-navy hover:bg-cyan-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" href={`/more?section=odontogram&patientId=${encodeURIComponent(treatment.patientId)}`}>
+          Abrir odontograma clínico
+        </Link>
+      </div>
     </div>
 
     <div className="min-w-0 rounded-xl border border-cyan-100 bg-white/90 p-3 sm:p-4">

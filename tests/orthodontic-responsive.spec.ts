@@ -20,6 +20,12 @@ test("odontograma avançado salva achados por superfície no prontuário e resta
     .filter({ has: occlusalSurface })
     .click();
   await expect(occlusalSurface).toBeChecked();
+  const orthodonticAppliance = page.locator("#orthoApplianceSelect");
+  await expect(orthodonticAppliance).toBeVisible();
+  await orthodonticAppliance.selectOption("bracket");
+  await page.locator('[role="option"][aria-label*="17"]').first().click();
+  await page.locator("#orthoApplianceSelect").selectOption("bracket");
+  await expect(page.getByTestId("orthodontic-wire")).toBeVisible();
   await expect(page.getByTestId("save-advanced-odontogram")).toBeEnabled();
 
   for (const width of [320, 375, 414, 768]) {
@@ -94,16 +100,53 @@ test("odontograma avançado salva achados por superfície no prontuário e resta
   await expect(page.getByTestId("odontogram-save-state")).toHaveText("Tudo salvo");
   const firstSave = expectStatus(await api<{
     version: number;
-    chartPayload: { format: string; statusChart: { teeth: Record<string, unknown> } };
+    chartPayload: { format: string; statusChart: { teeth: Record<string, { orthoAppliance?: string }> } };
   }>(page, `/clinical/odontograms?patientId=${fixture.patientId}`), 200);
   expect(firstSave.version).toBe(1);
   expect(firstSave.chartPayload.format).toBe("clini-advanced-odontogram");
   expect(firstSave.chartPayload.statusChart.teeth["16"]).toBeTruthy();
+  expect(firstSave.chartPayload.statusChart.teeth["16"]?.orthoAppliance).toBe("bracket");
+  expect(firstSave.chartPayload.statusChart.teeth["17"]?.orthoAppliance).toBe("bracket");
 
   await page.reload();
   await expect(page.getByTestId("advanced-clinical-odontogram")).toBeVisible();
   await page.locator('[role="option"][aria-label*="16"]').first().click();
   await expect(page.getByRole("checkbox", { name: /oclusal/i }).first()).toBeChecked();
+  await expect(page.locator("#orthoApplianceSelect")).toHaveValue("bracket");
+  await page.locator('[role="option"][aria-label*="17"]').first().click();
+  await expect(page.getByTestId("orthodontic-wire")).toBeVisible();
   const afterReload = expectStatus(await api<typeof firstSave>(page, `/clinical/odontograms?patientId=${fixture.patientId}`), 200);
   expect(afterReload.chartPayload).toEqual(firstSave.chartPayload);
+});
+
+test("tratamento ortodôntico abre o odontograma do paciente e salva marcação por dente", async ({ page }) => {
+  await loginAsOwner(page);
+  const fixture = await createE2EFixture(page);
+
+  await page.goto(`/more?section=treatments&patientId=${fixture.patientId}`);
+  await page.getByLabel("Tipo de tratamento").selectOption("ORTHODONTIC");
+  await page.getByLabel("Tipo de aparelho").selectOption("FIXED");
+  await page.getByLabel("Nome do tratamento").fill(`Ortodontia E2E ${Date.now()}`);
+  await page.getByRole("button", { name: "Criar tratamento" }).click();
+  await expect(page.getByText("Tratamento criado como planejado.")).toBeVisible();
+  await expect(page.getByText("Aparelho fixo", { exact: true })).toBeVisible();
+
+  await page.getByRole("link", { name: "Abrir odontograma clínico" }).click();
+  await expect(page).toHaveURL(new RegExp(`/more\\?section=odontogram&patientId=${fixture.patientId}`));
+  await expect(page.getByTestId("advanced-clinical-odontogram")).toBeVisible();
+  await page.locator('[role="option"][aria-label*="16"]').first().click();
+  const appliance = page.locator("#orthoApplianceSelect");
+  await expect(appliance).toBeVisible();
+  await appliance.selectOption("bracket");
+  await page.locator('[role="option"][aria-label*="17"]').first().click();
+  await page.locator("#orthoApplianceSelect").selectOption("bracket");
+  await expect(page.getByTestId("orthodontic-wire")).toBeVisible();
+  await page.getByTestId("save-advanced-odontogram").click();
+  await expect(page.getByTestId("odontogram-save-state")).toHaveText("Tudo salvo");
+
+  const saved = expectStatus(await api<{
+    chartPayload: { statusChart: { teeth: Record<string, { orthoAppliance?: string }> } };
+  }>(page, `/clinical/odontograms?patientId=${fixture.patientId}`), 200);
+  expect(saved.chartPayload.statusChart.teeth["16"]?.orthoAppliance).toBe("bracket");
+  expect(saved.chartPayload.statusChart.teeth["17"]?.orthoAppliance).toBe("bracket");
 });
