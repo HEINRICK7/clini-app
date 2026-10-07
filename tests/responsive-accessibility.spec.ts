@@ -5,6 +5,7 @@ test("layout responsivo: ações principais e odontograma cabem no viewport", as
   const fixture = await createE2EFixture(page);
 
   await page.goto(`/patients/${fixture.patientId}`);
+  await expect(page.getByRole("link", { name: "Ligar" })).toHaveCount(0);
   await page.getByRole("tab", { name: "Tratamentos" }).click();
   await page.getByRole("tab", { name: "Atendimento e histórico" }).click();
   await expect(page.getByRole("heading", { name: "Odontograma visual" })).toBeVisible();

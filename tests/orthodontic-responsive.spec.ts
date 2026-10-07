@@ -13,9 +13,10 @@ test("odontograma avançado salva achados por superfície no prontuário e resta
   await tooth16.click();
   await expect(tooth16).toHaveAttribute("aria-selected", "true");
   await expect(page.locator("#activeToothLabel")).toContainText("16");
-  const occlusalSurface = page.getByRole("checkbox", { name: /oclusal/i }).first();
+  const occlusalSurface = page.locator("#chk-caries-occlusal");
   await expect(occlusalSurface).toBeVisible();
-  await occlusalSurface.check();
+  await page.locator(".clini-advanced-chart-library label.surface-cell.pos-occlusal").click();
+  await expect(occlusalSurface).toBeChecked();
   await expect(page.getByTestId("save-advanced-odontogram")).toBeEnabled();
 
   for (const width of [320, 375, 414, 768]) {
