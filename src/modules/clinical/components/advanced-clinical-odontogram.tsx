@@ -12,7 +12,8 @@ import {
   setPlanChart,
   type OdontogramThemeConfig,
 } from "react-advanced-odontogram";
-import { useEffect, useRef, useState } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 
 import type { AdvancedOdontogramPayload } from "@/modules/clinical/odontogram-api";
 import { Button } from "@/components/ui/button";
@@ -127,6 +128,7 @@ export function AdvancedClinicalOdontogram({ patientId, initialPayload, version,
     {saveError ? <p aria-live="assertive" className="rounded-lg border border-danger/20 bg-red-50 px-3 py-2 text-sm text-danger">{saveError}</p> : null}
     <p className="text-sm leading-5 text-muted-foreground">{readOnly ? "Visualização do prontuário. Para registrar ou alterar informações, abra a aba Tratamentos." : "Selecione um dente para registrar condições, tratamentos e planejamento. Salve para atualizar o prontuário."}</p>
     <div className="clini-advanced-chart-library min-w-0 rounded-xl border border-border bg-white p-2 sm:p-4" data-testid="advanced-odontogram-library">
+      <ToothGridScrollControls targetRef={chartCanvasRef} />
       <div className="clini-advanced-chart-canvas min-w-0" ref={chartCanvasRef}>
         <OdontogramShell
           enableIcdas
@@ -140,6 +142,73 @@ export function AdvancedClinicalOdontogram({ patientId, initialPayload, version,
       </div>
     </div>
   </section>;
+}
+
+function ToothGridScrollControls({ targetRef }: { targetRef: RefObject<HTMLDivElement | null> }) {
+  const [scrollState, setScrollState] = useState({ visible: false, canScrollLeft: false, canScrollRight: false });
+
+  useEffect(() => {
+    const host = targetRef.current;
+    if (!host) return;
+
+    let grid: HTMLElement | null = null;
+    const resizeObserver = new ResizeObserver(update);
+    const syncObservedGrid = () => {
+      const nextGrid = host.querySelector<HTMLElement>("#toothGrid");
+      if (nextGrid === grid) return;
+      if (grid) {
+        grid.removeEventListener("scroll", update);
+        resizeObserver.unobserve(grid);
+      }
+      grid = nextGrid;
+      if (grid) {
+        grid.addEventListener("scroll", update, { passive: true });
+        resizeObserver.observe(grid);
+      }
+    };
+    function update() {
+      syncObservedGrid();
+      const visible = Boolean(grid && grid.clientWidth > 0 && grid.scrollWidth > grid.clientWidth + 1);
+      const next = {
+        visible,
+        canScrollLeft: visible && Boolean(grid && grid.scrollLeft > 1),
+        canScrollRight: visible && Boolean(grid && grid.scrollLeft + grid.clientWidth < grid.scrollWidth - 1),
+      };
+      setScrollState((previous) => previous.visible === next.visible
+        && previous.canScrollLeft === next.canScrollLeft
+        && previous.canScrollRight === next.canScrollRight
+        ? previous
+        : next);
+    }
+
+    const mutationObserver = new MutationObserver(update);
+    mutationObserver.observe(host, { childList: true, subtree: true, attributes: true, attributeFilter: ["class"] });
+    resizeObserver.observe(host);
+    window.addEventListener("resize", update, { passive: true });
+    update();
+
+    return () => {
+      mutationObserver.disconnect();
+      resizeObserver.disconnect();
+      grid?.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+    };
+  }, [targetRef]);
+
+  function scroll(direction: -1 | 1) {
+    const grid = targetRef.current?.querySelector<HTMLElement>("#toothGrid");
+    grid?.scrollBy({ left: direction * grid.clientWidth * 0.8, behavior: "smooth" });
+  }
+
+  if (!scrollState.visible) return null;
+
+  return <div aria-label="Navegação pelos dentes" className="clini-tooth-grid-scroll-controls" data-testid="odontogram-horizontal-navigation" role="group">
+    <p>Deslize a arcada ou use as setas para ver todos os dentes.</p>
+    <div className="flex shrink-0 gap-1.5">
+      <Button aria-label="Rolar arcada para a esquerda" className="h-11 min-h-11 w-11 px-0" disabled={!scrollState.canScrollLeft} onClick={() => scroll(-1)} variant="outline"><ChevronLeft aria-hidden="true" className="h-5 w-5" /></Button>
+      <Button aria-label="Rolar arcada para a direita" className="h-11 min-h-11 w-11 px-0" disabled={!scrollState.canScrollRight} onClick={() => scroll(1)} variant="outline"><ChevronRight aria-hidden="true" className="h-5 w-5" /></Button>
+    </div>
+  </div>;
 }
 
 function unpackPayload(payload: unknown): { statusChart: unknown; planChart: unknown } | null {

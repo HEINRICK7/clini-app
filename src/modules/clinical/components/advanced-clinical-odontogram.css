@@ -11,6 +11,27 @@
 .clini-advanced-chart-canvas {
   position: relative;
   min-width: 0;
+  height: auto;
+  max-height: none;
+  overflow: visible;
+}
+
+.clini-tooth-grid-scroll-controls {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border-bottom: 1px solid var(--border);
+  padding: 0 2px 10px;
+}
+
+.clini-tooth-grid-scroll-controls p {
+  min-width: 0;
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .clini-advanced-chart-library .orthodontic-wire-overlay {
@@ -308,5 +329,11 @@
 
   .clini-advanced-chart-library .panel {
     grid-column: 2;
+  }
+}
+
+@media (min-width: 640px) {
+  .clini-tooth-grid-scroll-controls {
+    display: none;
   }
 }

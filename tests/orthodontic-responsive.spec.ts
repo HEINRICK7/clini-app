@@ -93,6 +93,15 @@ test("odontograma avançado salva achados por superfície no prontuário e resta
     }
     if (width === 320) {
       expect(chartLayout.gridScrollWidth).toBeGreaterThan(chartLayout.gridClientWidth);
+      const grid = page.locator(".clini-advanced-chart-library #toothGrid");
+      const navigation = page.getByTestId("odontogram-horizontal-navigation");
+      await expect(navigation).toBeVisible();
+      const scrollRight = navigation.getByRole("button", { name: "Rolar arcada para a direita" });
+      await expect(scrollRight).toBeEnabled();
+      await scrollRight.click();
+      await expect.poll(() => grid.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0);
+      await navigation.getByRole("button", { name: "Rolar arcada para a esquerda" }).click();
+      await expect.poll(() => grid.evaluate((element) => element.scrollLeft)).toBeLessThan(1);
     }
   }
 
