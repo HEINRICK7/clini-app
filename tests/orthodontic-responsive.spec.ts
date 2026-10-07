@@ -29,14 +29,26 @@ test("odontograma avançado salva achados por superfície no prontuário e resta
       const chart = document.querySelector<HTMLElement>(".clini-advanced-chart-library .chart");
       const grid = document.querySelector<HTMLElement>(".clini-advanced-chart-library #toothGrid");
       const chartModeButton = document.querySelector<HTMLElement>(".clini-advanced-chart-library .chart-mode-btn");
+      const layout = document.querySelector<HTMLElement>(".clini-advanced-chart-library .layout");
+      const controls = document.querySelector<HTMLElement>(".clini-advanced-chart-library .panel");
+      const layoutBounds = layout?.getBoundingClientRect();
+      const controlsBounds = controls?.getBoundingClientRect();
       return {
         chartWidth: chart?.getBoundingClientRect().width ?? 0,
         gridClientWidth: grid?.clientWidth ?? 0,
         gridScrollWidth: grid?.scrollWidth ?? 0,
         chartModeButtonHeight: chartModeButton?.getBoundingClientRect().height ?? 0,
+        layoutColumnCount: layout ? getComputedStyle(layout).gridTemplateColumns.split(" ").length : 0,
+        controlsFitLayout: Boolean(layoutBounds && controlsBounds
+          && controlsBounds.left >= layoutBounds.left
+          && controlsBounds.right <= layoutBounds.right + 1),
       };
     });
     expect(chartLayout.chartWidth, `cartão do odontograma deve caber em ${width}px`).toBeLessThanOrEqual(width + 1);
+    if (width < 1024) {
+      expect(chartLayout.layoutColumnCount, `odontograma deve empilhar mapa e controles em ${width}px`).toBe(1);
+      expect(chartLayout.controlsFitLayout, `controles devem ocupar a largura disponível em ${width}px`).toBe(true);
+    }
     if (width <= 414) {
       expect(chartLayout.chartModeButtonHeight).toBeGreaterThanOrEqual(44);
       const toolbarButtons = page.locator(".clini-advanced-chart-library .perio-launch-bar button");

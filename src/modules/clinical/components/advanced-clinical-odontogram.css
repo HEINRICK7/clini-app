@@ -27,6 +27,12 @@
   min-width: 0;
 }
 
+/* The standalone library pins its controls to column 2. Clini stacks them
+   below the chart until there is enough room for a useful two-column layout. */
+.clini-advanced-chart-library .panel {
+  grid-column: 1;
+}
+
 .clini-advanced-chart-library .chart {
   overflow: hidden;
   border-radius: 14px;
@@ -261,5 +267,9 @@
   .clini-advanced-chart-library .layout {
     grid-template-columns: minmax(0, 1.6fr) minmax(20rem, 1fr);
     align-items: start;
+  }
+
+  .clini-advanced-chart-library .panel {
+    grid-column: 2;
   }
 }
