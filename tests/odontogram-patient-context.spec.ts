@@ -39,6 +39,6 @@ test("odontograma mantém o paciente ao abrir tratamentos pelo dente", async ({ 
 
   await expect(page).toHaveURL(new RegExp(`/more\\?section=treatments&patientId=${patientId}`));
   await expect(page.getByRole("heading", { name: "Tratamentos e procedimentos" })).toBeVisible();
-  await expect(page.getByLabel("Paciente")).toHaveValue(patientId!);
+  await expect(page.getByText(fixture.patientName, { exact: true })).toBeVisible();
   await expect(page.getByText("Paciente selecionado")).toBeVisible();
 });

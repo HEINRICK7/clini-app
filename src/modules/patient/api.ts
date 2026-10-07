@@ -27,6 +27,7 @@ const pageSchema = z.object({
 
 export type Patient = z.infer<typeof patientSchema>;
 export type PatientPage = z.infer<typeof pageSchema>;
+export type PatientListFilters = { unitId?: string; status?: Patient["status"] };
 
 export type PatientDraft = {
   currentUnitId: string;
@@ -40,9 +41,11 @@ export type PatientDraft = {
   confirmPossibleDuplicate?: boolean;
 };
 
-export async function listPatients(query = "", page = 0, size = 20): Promise<PatientPage> {
+export async function listPatients(query = "", page = 0, size = 20, filters: PatientListFilters = {}): Promise<PatientPage> {
   const params = new URLSearchParams({ page: String(page), size: String(size) });
   if (query.trim()) params.set("q", query.trim());
+  if (filters.unitId) params.set("unitId", filters.unitId);
+  if (filters.status) params.set("status", filters.status);
   return pageSchema.parse(await apiRequest<unknown>(`/patients?${params.toString()}`));
 }
 

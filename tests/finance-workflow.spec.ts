@@ -1,4 +1,4 @@
-import { api, createE2EFixture, expect, expectStatus, loginAsOwner, test } from "./support/e2e-fixtures";
+import { api, createE2EFixture, expect, expectStatus, loginAsOwner, selectPatient, test } from "./support/e2e-fixtures";
 
 test("gestão clínica: aprova orçamento, liquida parcela e registra receita", async ({ page }) => {
   await loginAsOwner(page);
@@ -15,7 +15,7 @@ test("gestão clínica: aprova orçamento, liquida parcela e registra receita", 
   });
 
   await page.goto("/more?section=budgets");
-  await page.getByLabel("Paciente", { exact: true }).selectOption(fixture.patientId);
+  await selectPatient(page, fixture.patientName);
   await page.getByLabel("Consultório de referência").selectOption(fixture.unitId);
   await page.getByLabel("Título").fill(budgetTitle);
   await page.getByLabel("Procedimento do catálogo (opcional)").selectOption(fixture.procedureId);
@@ -49,7 +49,7 @@ test("gestão clínica: aprova orçamento, liquida parcela e registra receita", 
   await page.getByLabel("Descrição").fill(entryDescription);
   await page.getByLabel("Valor (R$)").fill("25,00");
   await page.getByLabel("Consultório (opcional)").selectOption(fixture.unitId);
-  await page.getByLabel("Paciente (opcional)").selectOption(fixture.patientId);
+  await selectPatient(page, fixture.patientName, "Paciente (opcional)");
   const entryResponsePromise = page.waitForResponse((response) => response.request().method() === "POST" && new URL(response.url()).pathname.endsWith("/finance/entries"));
   await page.getByRole("button", { name: "Adicionar lançamento" }).click();
   const entryResponse = await entryResponsePromise;

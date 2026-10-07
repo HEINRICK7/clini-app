@@ -97,7 +97,6 @@ test("GF-05 agenda: cria atendimento e o exibe no período selecionado", async (
   await page.goto(`/agenda?patientId=${patient.id}`);
   await expect(page.getByRole("heading", { name: "Adicionar à agenda" })).toBeVisible();
   await page.getByLabel("Local de atendimento").selectOption(unit.id);
-  await page.getByLabel("Paciente").selectOption(patient.id);
   await page.locator('input[type="date"]').first().fill(slot.date);
   await page.getByRole("textbox", { name: "Início", exact: true }).fill(slot.start);
   await page.getByRole("textbox", { name: "Fim", exact: true }).fill(slot.end);
@@ -142,7 +141,7 @@ test("GF-06 tratamento: cria plano, adiciona procedimento e mantém o paciente n
   const treatmentName = `Plano E2E ${Date.now()}`;
 
   await page.goto(`/more?section=treatments&patientId=${fixture.patientId}`);
-  await expect(page.getByLabel("Paciente")).toHaveValue(fixture.patientId);
+  await expect(page.getByText(fixture.patientName, { exact: true })).toBeVisible();
   await page.getByLabel("Nome do tratamento").fill(treatmentName);
   await page.getByRole("button", { name: "Criar tratamento" }).click();
   await expect(page.getByText("Tratamento criado como planejado.")).toBeVisible();
@@ -281,7 +280,6 @@ test("GF-08 fluxo do dentista: consultório, paciente, agenda, dente e tratament
   }, appointmentDayOffset);
   await page.goto(`/agenda?patientId=${patient.id}`);
   await page.getByLabel("Local de atendimento").selectOption(unit.id);
-  await page.getByLabel("Paciente").selectOption(patient.id);
   await page.locator('input[type="date"]').first().fill(appointmentDate);
   await page.getByRole("textbox", { name: "Início", exact: true }).fill("10:00");
   await page.getByRole("textbox", { name: "Fim", exact: true }).fill("11:00");

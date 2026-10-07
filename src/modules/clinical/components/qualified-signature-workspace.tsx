@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import { useCliniServices } from "@/app/service-container";
 import type { QualifiedSignatureRequest } from "@/app/services";
@@ -10,17 +10,16 @@ import { Card } from "@/components/ui/card";
 import { RelatedSelect } from "@/components/ui/related-select";
 import { apiErrorMessage } from "@/lib/error-policy";
 import { qualifiedSignatureStatusLabel } from "@/lib/ui-labels";
+import { PatientPicker } from "@/modules/patient/components/patient-picker";
 
 export function QualifiedSignatureWorkspace() {
-  const { clinicalDocuments, clinicalSignatures, patient: patientService } = useCliniServices();
+  const { clinicalDocuments, clinicalSignatures } = useCliniServices();
   const queryClient = useQueryClient();
   const [patientId, setPatientId] = useState("");
   const [documentId, setDocumentId] = useState("");
   const [cancelReason, setCancelReason] = useState("");
   const [message, setMessage] = useState<string | null>(null);
-  const patientsQuery = useQuery({ queryKey: ["patients", "qualified-signatures"], queryFn: () => patientService.listPatients(), retry: false });
   const providerStatusQuery = useQuery({ queryKey: ["qualified-signature-provider-status"], queryFn: clinicalSignatures.getQualifiedSignatureProviderStatus, retry: false });
-  const patients = useMemo(() => (patientsQuery.data?.items ?? []).filter((patient) => patient.status === "ACTIVE"), [patientsQuery.data]);
   const documentsQuery = useQuery({ queryKey: ["clinical-documents", "qualified-signatures", patientId], queryFn: () => clinicalDocuments.listClinicalDocuments(patientId), enabled: Boolean(patientId), retry: false });
   const signaturesQuery = useQuery({ queryKey: ["qualified-signatures", patientId], queryFn: () => clinicalSignatures.listQualifiedSignatures(patientId), enabled: Boolean(patientId), retry: false });
   const documents = documentsQuery.data?.items ?? [];
@@ -56,7 +55,7 @@ export function QualifiedSignatureWorkspace() {
     setMessage(null);
   }
 
-  if (patientsQuery.isError || providerStatusQuery.isError || documentsQuery.isError || signaturesQuery.isError) {
+  if (providerStatusQuery.isError || documentsQuery.isError || signaturesQuery.isError) {
     return <Card className="p-5"><p className="text-sm text-danger">Não foi possível carregar o fluxo de assinatura.</p></Card>;
   }
 
@@ -69,7 +68,7 @@ export function QualifiedSignatureWorkspace() {
         {providerConfigured ? "Provedor ICP-Brasil configurado." : "Integração ICP-Brasil ainda não configurada. A solicitação pode ser preparada, mas não será enviada."}
       </p>
       <div className="mt-5 grid gap-3">
-        <RelatedSelect emptyDescription="Cadastre um paciente para preparar uma assinatura." emptyHref="/patients" emptyLabel="Cadastrar paciente" label="Paciente" loading={patientsQuery.isPending} onChange={selectPatient} options={patients.map((patient) => ({ value: patient.id, label: patient.fullName }))} value={patientId} />
+        <PatientPicker label="Paciente" status="ACTIVE" value={patientId} onChange={selectPatient} />
         <RelatedSelect disabled={!patientId} emptyDescription="Feche um documento clínico para disponibilizá-lo para assinatura." emptyHref="/more?section=documents" emptyLabel="Cadastrar documento" label="Documento fechado" loading={documentsQuery.isPending} onChange={setDocumentId} options={documents.filter((document) => document.status === "CLOSED").map((document) => ({ value: document.id, label: `${document.title} · v${document.version}` }))} value={documentId} />
         <Button disabled={!selectedDocument || selectedDocument.status !== "CLOSED" || Boolean(selectedSignature) || busy} onClick={() => requestMutation.mutate()}>{requestMutation.isPending ? "Preparando…" : "Preparar assinatura"}</Button>
         {selectedSignature?.status === "READY" ? <>

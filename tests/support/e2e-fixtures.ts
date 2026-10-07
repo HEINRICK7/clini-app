@@ -95,6 +95,12 @@ export async function loginAsOwner(page: Page) {
   }
 }
 
+export async function selectPatient(page: Page, patientName: string, label = "Paciente") {
+  const picker = page.getByRole("combobox", { name: label, exact: true });
+  await picker.fill(patientName);
+  await page.getByRole("option", { name: patientName }).click();
+}
+
 export async function api<T>(page: Page, path: string, options: ApiOptions = {}): Promise<ApiResult<T>> {
   return page.evaluate(async ({ path, method = "GET", body, headers = {} }) => {
     const csrf = !["GET", "HEAD", "OPTIONS"].includes(method.toUpperCase())

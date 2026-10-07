@@ -12,8 +12,9 @@ import { RelatedSelect, relatedSelectDefaults } from "@/components/ui/related-se
 import { apiErrorMessage, isUnauthorized } from "@/lib/error-policy";
 import { appointmentStatusLabel, appointmentTypeLabel } from "@/lib/ui-labels";
 import { useCurrentUnit } from "@/modules/auth/components/auth-gate";
-import type { Appointment } from "@/app/services";
+import type { Appointment, Patient } from "@/app/services";
 import { addDays, displayTime, formatRangeLabel, instant, localDate, rangeEnd, type AgendaView } from "@/modules/scheduling/application/calendar-rules";
+import { PatientPicker } from "@/modules/patient/components/patient-picker";
 
 const weekdayLabels = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"];
 const defaultAvailability = weekdayLabels.map((_, index) => ({ dayOfWeek: index + 1, startsAt: "08:00", endsAt: "18:00", enabled: false }));
@@ -30,6 +31,7 @@ export function AgendaWorkspace() {
   const [view, setView] = useState<AgendaView>("day");
   const [showComposer, setShowComposer] = useState(Boolean(requestedPatientId));
   const [patientId, setPatientId] = useState(requestedPatientId);
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [start, setStart] = useState("09:00");
   const [end, setEnd] = useState("10:00");
   const [type, setType] = useState<Appointment["type"]>("CONSULTATION");
@@ -80,8 +82,9 @@ export function AgendaWorkspace() {
   const patients = useMemo(() => {
     const listed = patientsQuery.data?.items.filter((item) => item.status === "ACTIVE") ?? [];
     const contextual = requestedPatientQuery.data?.status === "ACTIVE" ? [requestedPatientQuery.data] : [];
-    return [...new Map([...contextual, ...listed].map((item) => [item.id, item])).values()];
-  }, [patientsQuery.data, requestedPatientQuery.data]);
+    const selected = selectedPatient?.status === "ACTIVE" ? [selectedPatient] : [];
+    return [...new Map([...contextual, ...selected, ...listed].map((item) => [item.id, item])).values()];
+  }, [patientsQuery.data, requestedPatientQuery.data, selectedPatient]);
 
   if (agendaQuery.isError && isUnauthorized(agendaQuery.error)) {
     return <Card className="p-5"><h2 className="text-lg font-bold">Agenda</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">Entre para acessar a agenda.</p></Card>;
@@ -103,7 +106,7 @@ export function AgendaWorkspace() {
         <p className="mt-2 break-words text-sm leading-6 text-muted-foreground">Todo atendimento fica ligado a um paciente e a um local. Bloqueios operacionais ficam separados.</p>
         <div className="mt-5 grid min-w-0 gap-3">
           <AgendaSelect label="Local de atendimento" value={effectiveUnitId} onChange={(value) => { setUnitWasManuallySelected(true); setUnitId(value); setAvailabilityOverrides(null); }} options={activeUnits.map((unit) => ({ value: unit.id, label: unit.name }))} />
-          <AgendaSelect label="Paciente" value={patientId} onChange={setPatientId} options={patients.filter((patient) => !effectiveUnitId || patient.currentUnitId === effectiveUnitId).map((patient) => ({ value: patient.id, label: patient.fullName }))} />
+          <PatientPicker label="Paciente" status="ACTIVE" unitId={effectiveUnitId || undefined} value={patientId} onChange={setPatientId} onPatientChange={(selected) => { setSelectedPatient(selected); if (!unitWasManuallySelected) setUnitId(selected?.currentUnitId ?? ""); }} />
           <div className="grid min-w-0 gap-3 sm:grid-cols-3"><AgendaField label="Data" type="date" value={date} onChange={setDate} /><AgendaField label="Início" type="time" value={start} onChange={setStart} /><AgendaField label="Fim" type="time" value={end} onChange={setEnd} /></div>
           <AgendaSelect label="Tipo" value={type} onChange={(value) => setType(value as Appointment["type"])} options={[{ value: "CONSULTATION", label: "Consulta" }, { value: "RETURN", label: "Retorno" }, { value: "WALK_IN", label: "Encaixe" }, { value: "URGENT", label: "Urgência" }]} />
           <label className="flex min-h-11 items-center gap-2 text-sm"><input checked={fitIn} onChange={(event) => setFitIn(event.target.checked)} type="checkbox" /> Autorizar como encaixe se houver conflito</label>

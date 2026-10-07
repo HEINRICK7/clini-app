@@ -42,7 +42,7 @@ test("crawler percorre as rotas operacionais sem tela quebrada ou links internos
   await page.goto(`/patients/${fixture.patientId}`);
   await expect(page.getByRole("heading", { name: fixture.patientName })).toBeVisible();
   await page.goto(`/more?section=treatments&patientId=${fixture.patientId}`);
-  await expect(page.getByLabel("Paciente")).toHaveValue(fixture.patientId);
+  await expect(page.getByText(fixture.patientName, { exact: true })).toBeVisible();
 
   const protectedResponse = await api(page, "/auth/me");
   expect(protectedResponse.status).toBe(200);

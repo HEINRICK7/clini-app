@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import { useCliniServices } from "@/app/service-container";
 import type { CatalogProcedure, OrthodonticApplianceType, Treatment, TreatmentCategory } from "@/app/services";
@@ -12,6 +12,7 @@ import { RelatedSelect } from "@/components/ui/related-select";
 import { apiErrorMessage, isUnauthorized } from "@/lib/error-policy";
 import { clinicalRecordStatusLabel, plannedProcedureStatusLabel, treatmentStatusLabel } from "@/lib/ui-labels";
 import { isOrthodonticTreatment, OrthodonticTreatmentVisual } from "@/modules/clinical/components/orthodontic-treatment-visual";
+import { PatientPicker } from "@/modules/patient/components/patient-picker";
 
 export function TreatmentWorkspace() {
   const searchParams = useSearchParams();
@@ -30,16 +31,9 @@ export function TreatmentWorkspace() {
   const [performedContent, setPerformedContent] = useState("");
   const [performedPlannedId, setPerformedPlannedId] = useState("");
   const [message, setMessage] = useState<string | null>(null);
-  const requestedPatientId = searchParams.get("patientId") ?? "";
-  const patientsQuery = useQuery({ queryKey: ["patients", "treatments"], queryFn: () => patientService.listPatients(), retry: false });
-  const requestedPatientQuery = useQuery({ queryKey: ["patient", "treatments", requestedPatientId], queryFn: () => patientService.getPatient(requestedPatientId), enabled: Boolean(requestedPatientId), retry: false });
+  const selectedPatientQuery = useQuery({ queryKey: ["patient", "treatments", patientId], queryFn: () => patientService.getPatient(patientId), enabled: Boolean(patientId), retry: false });
   const unitsQuery = useQuery({ queryKey: ["units"], queryFn: practice.listUnits, retry: false });
-  const patients = useMemo(() => {
-    const listed = (patientsQuery.data?.items ?? []).filter((patient) => patient.status === "ACTIVE");
-    const contextual = requestedPatientQuery.data?.status === "ACTIVE" ? [requestedPatientQuery.data] : [];
-    return [...new Map([...contextual, ...listed].map((patient) => [patient.id, patient])).values()];
-  }, [patientsQuery.data, requestedPatientQuery.data]);
-  const selectedPatient = requestedPatientQuery.data ?? patients.find((patient) => patient.id === patientId);
+  const selectedPatient = selectedPatientQuery.data;
   const catalogQuery = useQuery({ queryKey: ["catalog-procedures", "treatment", selectedPatient?.currentUnitId], queryFn: () => catalog.listCatalogProcedures({ unitId: selectedPatient?.currentUnitId, configuredOnly: true }), enabled: Boolean(selectedPatient?.currentUnitId), retry: false });
   const treatmentsQuery = useQuery({ queryKey: ["treatments", patientId], queryFn: () => clinicalTreatments.listTreatments(patientId), enabled: Boolean(patientId), retry: false });
   const performedQuery = useQuery({ queryKey: ["performed-procedures", selectedTreatmentId], queryFn: () => clinicalTreatments.listPerformedProcedures(selectedTreatmentId), enabled: Boolean(selectedTreatmentId), retry: false });
@@ -64,7 +58,7 @@ export function TreatmentWorkspace() {
       <h2 className="mt-1 text-xl font-bold tracking-tight">Tratamentos e procedimentos</h2>
       <p className="mt-2 text-sm leading-6 text-muted-foreground">O tratamento pode continuar em outras consultas; cada procedimento fica vinculado ao consultório em que foi realizado.</p>
       <div className="mt-5 grid gap-3">
-        <RelatedSelect emptyDescription="Cadastre um paciente para começar um tratamento." emptyHref="/patients" emptyLabel="Cadastrar paciente" label="Paciente" loading={patientsQuery.isPending} onChange={(value) => { setPatientId(value); setSelectedTreatmentId(""); setMessage(null); }} options={patients.map((patient) => ({ value: patient.id, label: patient.fullName }))} value={patientId} />
+        <PatientPicker label="Paciente" status="ACTIVE" value={patientId} onChange={(value) => { setPatientId(value); setSelectedTreatmentId(""); setMessage(null); }} />
         <label className="grid gap-1.5 text-sm font-semibold"><span>Tipo de tratamento</span><select className="min-h-11 rounded-xl border border-border bg-surface px-3 text-sm font-normal" onChange={(event) => { const nextCategory = event.target.value as TreatmentCategory; setCategory(nextCategory); if (nextCategory === "GENERAL") setApplianceType(""); }} value={category}><option value="GENERAL">Tratamento geral</option><option value="ORTHODONTIC">Ortodontia</option></select></label>
         {category === "ORTHODONTIC" ? <label className="grid gap-1.5 text-sm font-semibold"><span>Tipo de aparelho</span><select className="min-h-11 rounded-xl border border-border bg-surface px-3 text-sm font-normal" onChange={(event) => setApplianceType(event.target.value as OrthodonticApplianceType | "")} value={applianceType}><option value="">Selecione o aparelho</option><option value="FIXED">Aparelho fixo</option><option value="CLEAR_ALIGNER">Alinhador transparente</option><option value="REMOVABLE">Aparelho removível</option><option value="OTHER">Outro aparelho</option></select></label> : null}
         <ClinicalField label="Nome do tratamento" value={name} onChange={setName} />

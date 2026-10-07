@@ -2,16 +2,14 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
-import { ArrowLeft, Check, CheckCircle2, Circle } from "lucide-react";
+import { useState } from "react";
+import { ArrowLeft, Check, CheckCircle2 } from "lucide-react";
 
 import { useCliniServices } from "@/app/service-container";
-import type { Patient } from "@/app/services";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { RelatedSelect } from "@/components/ui/related-select";
-import { UserAvatar } from "@/components/ui/user-avatar";
 import { apiErrorMessage } from "@/lib/error-policy";
+import { PatientPicker } from "@/modules/patient/components/patient-picker";
 import { buildEvolutionContent, type NextStep } from "@/modules/clinical/application/appointment-rules";
 import { addDays, instant, localDate } from "@/modules/scheduling/application/calendar-rules";
 import { CliniOdontogram } from "@/modules/clinical/presentation/odontogram/components/clini-odontogram";
@@ -35,15 +33,8 @@ export function AppointmentFlowWorkspace() {
   const [returnStart, setReturnStart] = useState("09:00");
   const [returnEnd, setReturnEnd] = useState("10:00");
   const [message, setMessage] = useState<string | null>(null);
-  const requestedPatientId = searchParams.get("patientId") ?? "";
-  const patientsQuery = useQuery({ queryKey: ["patients", "appointment-flow"], queryFn: () => patientService.listPatients(), retry: false });
-  const requestedPatientQuery = useQuery({ queryKey: ["patient", "appointment-flow", requestedPatientId], queryFn: () => patientService.getPatient(requestedPatientId), enabled: Boolean(requestedPatientId), retry: false });
-  const patients = useMemo(() => {
-    const listed = (patientsQuery.data?.items ?? []).filter((item) => item.status === "ACTIVE");
-    const contextual = requestedPatientQuery.data?.status === "ACTIVE" ? [requestedPatientQuery.data] : [];
-    return [...new Map([...contextual, ...listed].map((item) => [item.id, item])).values()];
-  }, [patientsQuery.data, requestedPatientQuery.data]);
-  const patient = requestedPatientQuery.data ?? patients.find((item) => item.id === patientId);
+  const selectedPatientQuery = useQuery({ queryKey: ["patient", "appointment-flow", patientId], queryFn: () => patientService.getPatient(patientId), enabled: Boolean(patientId), retry: false });
+  const patient = selectedPatientQuery.data;
   const catalogQuery = useQuery({ queryKey: ["catalog-procedures", "appointment-flow", patient?.currentUnitId], queryFn: () => catalog.listCatalogProcedures({ unitId: patient?.currentUnitId, configuredOnly: true }), enabled: Boolean(patient?.currentUnitId), retry: false });
   const finishMutation = useMutation({
     mutationFn: () => clinical.completeAppointment({ patientId, unitId: patient?.currentUnitId ?? "", content: buildEvolutionContent({ context, observations, procedures: catalogQuery.data?.items.filter((item) => selectedProcedureIds.includes(item.id)).map((item) => item.name) ?? [], nextStep, returnDays }), appointmentId: searchParams.get("appointmentId") ?? undefined, nextStep, returnAppointment: nextStep === "return" ? { startsAt: instant(returnDate, returnStart), endsAt: instant(returnDate, returnEnd) } : undefined }),
@@ -77,7 +68,7 @@ export function AppointmentFlowWorkspace() {
 
   return <section className="mx-auto grid w-full max-w-2xl gap-4">
     <div className="flex items-center gap-2"><Button aria-label="Voltar para pacientes" className="h-10 w-10 px-0" onClick={() => window.history.back()} size="sm" variant="ghost"><ArrowLeft aria-hidden="true" className="h-5 w-5" /></Button><div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Atendimento</p><h1 className="text-xl font-bold tracking-tight text-brand-navy">Iniciar atendimento</h1></div></div>
-    <PatientContext patient={patient} patients={patients} patientId={patientId} patientsLoading={patientsQuery.isPending || requestedPatientQuery.isPending} onPatientChange={setPatientId} />
+    <PatientContext patientId={patientId} onPatientChange={setPatientId} />
     <Card className="p-4 sm:p-6"><div className="grid gap-2 sm:grid-cols-4" aria-label="Etapas do atendimento">{stepLabels.map((label, index) => { const itemStep = (index + 1) as FlowStep; const active = step === itemStep; const complete = step > itemStep; return <button aria-current={active ? "step" : undefined} className={`flex items-center gap-2 rounded-xl px-2 py-2 text-left text-xs font-semibold sm:block sm:text-center ${active ? "bg-blue-50 text-primary" : complete ? "text-success" : "text-muted-foreground"}`} key={label} onClick={() => { if (complete) setStep(itemStep); }} type="button"><span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full sm:mx-auto sm:mb-1 ${active ? "bg-primary text-white" : complete ? "bg-green-100 text-success" : "bg-surface-muted"}`}>{complete ? <Check aria-hidden="true" className="h-4 w-4" /> : itemStep}</span><span>{label}</span></button>; })}</div></Card>
     {step === 1 ? <ContextStep context={context} onChange={setContext} /> : null}
     {step === 2 ? <ProceduresStep procedures={catalogQuery.data?.items ?? []} selectedIds={selectedProcedureIds} onToggle={toggleProcedure} isPending={catalogQuery.isPending} /> : null}
@@ -89,8 +80,8 @@ export function AppointmentFlowWorkspace() {
   </section>;
 }
 
-function PatientContext({ patient, patients, patientId, patientsLoading, onPatientChange }: { patient?: Patient; patients: Patient[]; patientId: string; patientsLoading: boolean; onPatientChange: (value: string) => void }) {
-  return <Card className="p-4 sm:p-5">{patient ? <div className="flex items-center gap-3"><UserAvatar decorative name={patient.fullName} seed={patient.id || patient.email || patient.fullName} size="md" /><div className="min-w-0 flex-1"><p className="text-xs font-semibold text-muted-foreground">Paciente</p><p className="truncate font-bold text-brand-navy">{patient.fullName}</p></div><p className="text-xs text-muted-foreground">{patient.phone ?? "Sem telefone"}</p></div> : <div className="flex items-start gap-3"><span aria-hidden="true" className="mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface-muted"><Circle className="h-5 w-5 text-muted-foreground" /></span><div className="min-w-0 flex-1"><RelatedSelect emptyDescription="Cadastre um paciente para iniciar o atendimento." emptyHref="/patients" emptyLabel="Cadastrar paciente" label="Paciente" loading={patientsLoading} onChange={onPatientChange} options={patients.map((item) => ({ value: item.id, label: item.fullName }))} placeholder="Buscar paciente…" value={patientId} /></div></div>}</Card>;
+function PatientContext({ patientId, onPatientChange }: { patientId: string; onPatientChange: (value: string) => void }) {
+  return <Card className="p-4 sm:p-5"><PatientPicker label="Paciente" status="ACTIVE" value={patientId} onChange={onPatientChange} /></Card>;
 }
 
 function ContextStep({ context, onChange }: { context: string; onChange: (value: string) => void }) {

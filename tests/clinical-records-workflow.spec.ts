@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 
-import { api, createE2EFixture, expect, expectStatus, loginAsOwner, test } from "./support/e2e-fixtures";
+import { api, createE2EFixture, expect, expectStatus, loginAsOwner, selectPatient, test } from "./support/e2e-fixtures";
 
 test("prontuário: documento, prescrição e anexo ficam salvos no backend", async ({ page }) => {
   await loginAsOwner(page);
@@ -10,7 +10,7 @@ test("prontuário: documento, prescrição e anexo ficam salvos no backend", asy
   const documentContent = "Avaliação clínica sintética para validação de homologação.";
 
   await page.goto("/more?section=documents");
-  await page.getByLabel("Paciente").selectOption(fixture.patientId);
+  await selectPatient(page, fixture.patientName);
   await page.getByLabel("Título").fill(documentTitle);
   await page.getByLabel("Conteúdo").fill(documentContent);
   const documentResponsePromise = page.waitForResponse((response) => response.request().method() === "POST" && new URL(response.url()).pathname.endsWith("/clinical/documents"));
@@ -28,7 +28,7 @@ test("prontuário: documento, prescrição e anexo ficam salvos no backend", asy
   expect(documentHistory.items.find((item) => item.id === document.id)).toMatchObject({ status: "CLOSED", version: 1, content: documentContent });
 
   await page.goto("/more?section=prescriptions");
-  await page.getByLabel("Paciente").selectOption(fixture.patientId);
+  await selectPatient(page, fixture.patientName);
   await page.getByLabel("Medicamento").fill("Ibuprofeno 600 mg");
   await page.getByLabel("Dose").fill("1 comprimido");
   await page.getByLabel("Frequência").fill("A cada 8 horas");
@@ -56,7 +56,7 @@ test("prontuário: documento, prescrição e anexo ficam salvos no backend", asy
   const attachmentFilename = `exame-${suffix}.png`;
   const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/lxoAAAAASUVORK5CYII=", "base64");
   await page.goto("/more?section=attachments");
-  await page.getByLabel("Paciente").selectOption(fixture.patientId);
+  await selectPatient(page, fixture.patientName);
   await page.getByLabel("Documento relacionado (opcional)").selectOption(document.id);
   await page.getByLabel("Arquivo").setInputFiles({ name: attachmentFilename, mimeType: "image/png", buffer: png });
   const attachmentResponsePromise = page.waitForResponse((response) => response.request().method() === "POST" && new URL(response.url()).pathname.endsWith("/clinical/attachments"));

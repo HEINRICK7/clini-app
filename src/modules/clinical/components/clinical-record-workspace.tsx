@@ -9,9 +9,10 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { RelatedSelect, relatedSelectDefaults } from "@/components/ui/related-select";
 import { apiErrorMessage, isUnauthorized } from "@/lib/error-policy";
+import { PatientPicker } from "@/modules/patient/components/patient-picker";
 
 export function ClinicalRecordWorkspace() {
-  const { clinical, patient, practice } = useCliniServices();
+  const { clinical, practice } = useCliniServices();
   const queryClient = useQueryClient();
   const [patientId, setPatientId] = useState("");
   const [evolutionPage, setEvolutionPage] = useState(0);
@@ -21,9 +22,7 @@ export function ClinicalRecordWorkspace() {
   const [rectificationReason, setRectificationReason] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const unitsQuery = useQuery({ queryKey: ["units"], queryFn: practice.listUnits, retry: false });
-  const patientsQuery = useQuery({ queryKey: ["patients", "clinical"], queryFn: () => patient.listPatients(), retry: false });
   const activeUnits = useMemo(() => (unitsQuery.data ?? []).filter((unit) => unit.status === "ACTIVE"), [unitsQuery.data]);
-  const activePatients = useMemo(() => (patientsQuery.data?.items ?? []).filter((patient) => patient.status === "ACTIVE"), [patientsQuery.data]);
   const evolutionsQuery = useQuery({
     queryKey: ["clinical-evolutions", patientId, evolutionPage],
     queryFn: () => clinical.listClinicalEvolutions(patientId, evolutionPage),
@@ -61,8 +60,8 @@ export function ClinicalRecordWorkspace() {
         <h2 className="mt-1 text-xl font-bold tracking-tight">Nova evolução clínica</h2>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">O registro acompanha o paciente entre locais e preserva autor, versão e histórico.</p>
         <div className="mt-5 grid gap-3">
-          <ClinicalSelect label="Paciente" value={patientId} onChange={(value) => { setPatientId(value); setEvolutionPage(0); setUnitId(activePatients.find((patient) => patient.id === value)?.currentUnitId ?? ""); setMessage(null); }} options={activePatients.map((patient) => ({ value: patient.id, label: patient.fullName }))} />
-          <ClinicalSelect label="Local do atendimento" value={unitId} onChange={setUnitId} options={activeUnits.filter((unit) => !patientId || activePatients.find((patient) => patient.id === patientId)?.currentUnitId === unit.id).map((unit) => ({ value: unit.id, label: unit.name }))} />
+          <PatientPicker label="Paciente" status="ACTIVE" value={patientId} onChange={(value) => { setPatientId(value); setEvolutionPage(0); setMessage(null); }} onPatientChange={(selected) => setUnitId(selected?.currentUnitId ?? "")} />
+          <ClinicalSelect label="Local do atendimento" value={unitId} onChange={setUnitId} options={activeUnits.filter((unit) => !unitId || unitId === unit.id).map((unit) => ({ value: unit.id, label: unit.name }))} />
           <label className="grid gap-1.5 text-sm font-semibold"><span>Conteúdo clínico</span><textarea className="min-h-36 rounded-xl border border-border bg-surface px-4 py-3 text-base font-normal outline-none focus:border-primary focus:ring-4 focus:ring-cyan-100" onChange={(event) => setContent(event.target.value)} placeholder="Descreva a evolução, exame, diagnóstico e conduta…" value={content} /></label>
           {message ? <p aria-live="polite" className="rounded-xl bg-cyan-50 px-3 py-2 text-sm leading-5 text-brand-navy">{message}</p> : null}
           <Button disabled={busy || !patientId || !unitId || !content.trim()} onClick={() => createMutation.mutate()}>{createMutation.isPending ? "Salvando…" : "Salvar rascunho"}</Button>
