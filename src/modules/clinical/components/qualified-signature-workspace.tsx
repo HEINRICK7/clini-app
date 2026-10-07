@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { RelatedSelect } from "@/components/ui/related-select";
 import { apiErrorMessage } from "@/lib/error-policy";
+import { qualifiedSignatureStatusLabel } from "@/lib/ui-labels";
 
 export function QualifiedSignatureWorkspace() {
   const { clinicalDocuments, clinicalSignatures, patient: patientService } = useCliniServices();
@@ -88,5 +89,13 @@ export function QualifiedSignatureWorkspace() {
 }
 
 function SignatureCard({ signature, selected, onSelect }: { signature: QualifiedSignatureRequest; selected: boolean; onSelect: () => void }) {
-  return <button className={`rounded-2xl border p-4 text-left ${selected ? "border-primary bg-cyan-50/30" : "border-border"}`} onClick={onSelect} type="button"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-wide text-primary">ICP-Brasil</p><h3 className="mt-1 font-bold">Documento · v{signature.documentVersion}</h3></div><span className="text-xs text-muted-foreground">{signature.status}</span></div><p className="mt-2 break-all text-[11px] text-muted-foreground">SHA-256: {signature.documentContentSha256}</p><p className="mt-2 text-xs text-muted-foreground">{signature.status === "READY" ? "Pronto para integração com o provedor." : signature.cancellationReason ?? signature.externalRequestId ?? "Evidência disponível"}</p></button>;
+  const description = signature.cancellationReason ?? ({
+    READY: "Documento pronto para envio.",
+    SUBMITTED: "Aguardando confirmação da assinatura.",
+    SIGNED: "Assinatura registrada e vinculada a esta versão.",
+    DECLINED: "A solicitação de assinatura foi recusada.",
+    EXPIRED: "A solicitação de assinatura expirou.",
+    CANCELED: "A solicitação de assinatura foi cancelada.",
+  } as Record<QualifiedSignatureRequest["status"], string>)[signature.status];
+  return <button className={`rounded-2xl border p-4 text-left ${selected ? "border-primary bg-cyan-50/30" : "border-border"}`} onClick={onSelect} type="button"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-wide text-primary">ICP-Brasil</p><h3 className="mt-1 font-bold">Documento · v{signature.documentVersion}</h3></div><span className="text-xs text-muted-foreground">{qualifiedSignatureStatusLabel(signature.status)}</span></div><p className="mt-2 text-xs text-muted-foreground">{description}</p></button>;
 }

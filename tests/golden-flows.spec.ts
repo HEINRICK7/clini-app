@@ -37,7 +37,7 @@ test("GF-04 novo paciente: cadastro feito pela interface aparece na lista", asyn
 
   await page.goto("/patients");
   await page.getByRole("button", { name: "Adicionar paciente" }).click();
-  await page.getByLabel("Unit atual *").selectOption(fixture.unitId);
+  await page.getByLabel("Consultório atual *").selectOption(fixture.unitId);
   await page.getByLabel("Nome completo").fill(patientName);
   await page.getByRole("button", { name: "Cadastrar paciente" }).click();
 
@@ -90,6 +90,7 @@ test("GF-05 agenda: cria atendimento e o exibe no período selecionado", async (
 
   await expect(page.getByText("Atendimento criado.", { exact: true })).toBeVisible();
   await expect(page.getByText("Atendimento agendado")).toBeVisible();
+  await expect(page.getByRole("heading", { name: fixture.patientName })).toBeVisible();
 });
 
 test("GF-03 odontograma: registra procedimento no dente 16 e confirma o histórico", async ({ page }) => {
@@ -105,6 +106,7 @@ test("GF-03 odontograma: registra procedimento no dente 16 e confirma o históri
   await page.getByRole("button", { name: "Continuar" }).click();
 
   await expect(page.getByRole("heading", { name: "Odontograma visual" })).toBeVisible();
+  await expect(page.locator(".clini-advanced-chart-library .topbar")).toBeHidden();
   await page.locator('[role="option"][aria-label="Dente 16"]').click();
   await page.getByRole("button", { name: "+ Procedimento" }).first().click();
   await page.getByLabel("Procedimento realizado").selectOption(fixture.procedureId);
@@ -206,7 +208,7 @@ test("GF-08 fluxo do dentista: consultório, paciente, agenda, dente e tratament
 
   await page.goto("/patients");
   await page.getByRole("button", { name: "Adicionar paciente" }).click();
-  await page.getByLabel("Unit atual *").selectOption(unit.id);
+  await page.getByLabel("Consultório atual *").selectOption(unit.id);
   await page.getByLabel("Nome completo").fill(patientName);
   const patientResponsePromise = page.waitForResponse((response) => response.request().method() === "POST" && new URL(response.url()).pathname.endsWith("/patients"));
   await page.getByRole("button", { name: "Cadastrar paciente" }).click();

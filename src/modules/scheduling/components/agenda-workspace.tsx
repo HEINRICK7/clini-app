@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { RelatedSelect, relatedSelectDefaults } from "@/components/ui/related-select";
 import { apiErrorMessage, isUnauthorized } from "@/lib/error-policy";
+import { appointmentStatusLabel, appointmentTypeLabel } from "@/lib/ui-labels";
 import { useCurrentUnit } from "@/modules/auth/components/auth-gate";
 import type { Appointment } from "@/app/services";
 import { addDays, displayTime, formatRangeLabel, instant, localDate, rangeEnd, type AgendaView } from "@/modules/scheduling/application/calendar-rules";
@@ -36,7 +37,7 @@ export function AgendaWorkspace() {
   const [reason, setReason] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const unitsQuery = useQuery({ queryKey: ["units"], queryFn: practice.listUnits, retry: false });
-  const patientsQuery = useQuery({ queryKey: ["patients", "agenda"], queryFn: () => patient.listPatients(), retry: false });
+  const patientsQuery = useQuery({ queryKey: ["patients", "agenda"], queryFn: () => patient.listPatients("", 0, 50), retry: false });
   const requestedPatientQuery = useQuery({ queryKey: ["patient", "agenda", requestedPatientId], queryFn: () => patient.getPatient(requestedPatientId), enabled: Boolean(requestedPatientId), retry: false });
   const effectiveUnitId = unitWasManuallySelected ? unitId : requestedPatientQuery.data?.currentUnitId ?? unitId;
   const availabilityQuery = useQuery({ queryKey: ["availability", effectiveUnitId], queryFn: () => scheduling.listAvailability(effectiveUnitId), enabled: Boolean(effectiveUnitId), retry: false });
@@ -118,7 +119,7 @@ export function AgendaWorkspace() {
         <div className="mt-4 grid gap-3">
           {agendaQuery.isPending ? <p className="text-sm text-muted-foreground">Carregando agenda…</p> : null}
           {!agendaQuery.isPending && !agenda?.appointments.length && !agenda?.blocks.length ? <p className="rounded-xl border border-dashed border-border px-4 py-5 text-sm leading-6 text-muted-foreground">Nenhum compromisso ou bloqueio neste dia.</p> : null}
-          {agenda?.appointments.map((appointment) => <AppointmentCard key={appointment.id} appointment={appointment} busy={busy} onCancel={() => cancelMutation.mutate(appointment.id)} />)}
+          {agenda?.appointments.map((appointment) => <AppointmentCard key={appointment.id} appointment={appointment} patientName={patients.find((patient) => patient.id === appointment.patientId)?.fullName ?? "Paciente"} busy={busy} onCancel={() => cancelMutation.mutate(appointment.id)} />)}
           {agenda?.blocks.map((block) => <article className="rounded-2xl border border-amber-200 bg-amber-50 p-4" key={block.id}><p className="text-xs font-bold uppercase tracking-wide text-amber-800">Bloqueio · {displayTime(block.startsAt)}–{displayTime(block.endsAt)}</p><h3 className="mt-1 font-bold text-amber-950">{block.reason}</h3><p className="mt-1 text-sm text-amber-900">{block.unitId ? "Local específico" : "Todos os locais"}</p></article>)}
         </div>
       </Card>
@@ -126,9 +127,11 @@ export function AgendaWorkspace() {
   );
 }
 
-function AppointmentCard({ appointment, busy, onCancel }: { appointment: Appointment; busy: boolean; onCancel: () => void }) {
-  const typeLabel = { CONSULTATION: "Consulta", RETURN: "Retorno", WALK_IN: "Encaixe", URGENT: "Urgência" }[appointment.type];
-  return <article className="rounded-2xl border border-border p-4"><div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"><div className="min-w-0"><p className="break-words text-xs font-bold uppercase tracking-wide text-primary">{displayTime(appointment.startsAt)}–{displayTime(appointment.endsAt)} · {typeLabel}</p><h3 className="mt-1 break-words font-bold">Paciente {appointment.patientId.slice(0, 8)}</h3><p className="mt-1 text-sm text-muted-foreground">{appointment.fitIn ? "Encaixe autorizado" : "Atendimento agendado"}</p></div><span className="self-start rounded-full bg-green-50 px-2 py-1 text-xs font-bold text-success">{appointment.status === "SCHEDULED" ? "Agendado" : appointment.status}</span></div><Button className="mt-3 min-h-11 w-full sm:w-auto" disabled={busy} onClick={onCancel} size="sm" variant="ghost">Cancelar</Button></article>;
+function AppointmentCard({ appointment, patientName, busy, onCancel }: { appointment: Appointment; patientName: string; busy: boolean; onCancel: () => void }) {
+  const typeLabel = appointmentTypeLabel(appointment.type);
+  const canCancel = appointment.status === "SCHEDULED" || appointment.status === "CONFIRMED";
+  const statusStyle = appointment.status === "CANCELED" ? "bg-surface-muted text-muted-foreground" : appointment.status === "COMPLETED" ? "bg-blue-50 text-primary" : "bg-green-50 text-success";
+  return <article className="rounded-2xl border border-border p-4"><div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"><div className="min-w-0"><p className="break-words text-xs font-bold uppercase tracking-wide text-primary">{displayTime(appointment.startsAt)}–{displayTime(appointment.endsAt)} · {typeLabel}</p><h3 className="mt-1 break-words font-bold">{patientName}</h3><p className="mt-1 text-sm text-muted-foreground">{appointment.fitIn ? "Encaixe autorizado" : "Atendimento agendado"}</p></div><span className={`self-start rounded-full px-2 py-1 text-xs font-bold ${statusStyle}`}>{appointmentStatusLabel(appointment.status)}</span></div>{canCancel ? <Button className="mt-3 min-h-11 w-full sm:w-auto" disabled={busy} onClick={onCancel} size="sm" variant="ghost">Cancelar</Button> : null}</article>;
 }
 
 function AgendaSelect({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: { value: string; label: string }[] }) {
