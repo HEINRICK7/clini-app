@@ -18,6 +18,7 @@ export function CatalogWorkspace() {
   const [query, setQuery] = useState("");
   const [includeArchived, setIncludeArchived] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedProcedure, setSelectedProcedure] = useState<CatalogProcedure | null>(null);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
@@ -32,7 +33,8 @@ export function CatalogWorkspace() {
     retry: false,
   });
   const procedures = proceduresQuery.data?.items ?? [];
-  const selected = procedures.find((item) => item.id === selectedId) ?? null;
+  const selected = procedures.find((item) => item.id === selectedId)
+    ?? (selectedProcedure?.id === selectedId ? selectedProcedure : null);
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["catalog-procedures"] });
   const saveMutation = useMutation({
@@ -41,6 +43,7 @@ export function CatalogWorkspace() {
       : catalog.createCatalogProcedure({ name, description: description || undefined }),
     onSuccess: async (procedure) => {
       setSelectedId(procedure.id);
+      setSelectedProcedure(procedure);
       setName(procedure.name);
       setDescription(procedure.description ?? "");
       setMessage(selectedId ? "Procedimento atualizado." : "Procedimento criado.");
@@ -72,6 +75,7 @@ export function CatalogWorkspace() {
 
   function selectProcedure(procedure: CatalogProcedure) {
     setSelectedId(procedure.id);
+    setSelectedProcedure(procedure);
     setName(procedure.name);
     setDescription(procedure.description ?? "");
     setPrice(formatPrice(procedure.unitConfiguration?.priceCents));

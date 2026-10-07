@@ -37,7 +37,8 @@ export function ClinicalAttachmentWorkspace() {
     try {
       const blob = await clinicalAttachments.downloadClinicalAttachment(attachment.id);
       const url = URL.createObjectURL(blob);
-      const link = document.createElement("a"); link.href = url; link.download = attachment.originalFilename; link.click(); URL.revokeObjectURL(url);
+      const link = document.createElement("a"); link.href = url; link.download = attachment.originalFilename; document.body.appendChild(link); link.click(); link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
       setMessage("Arquivo baixado.");
     } catch (error) { showError(error); }
   }
