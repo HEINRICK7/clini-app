@@ -17,7 +17,8 @@ test("prontuário: documento, prescrição e anexo ficam salvos no backend", asy
   await page.getByRole("button", { name: "Criar documento" }).click();
   const documentResponse = await documentResponsePromise;
   expect(documentResponse.status()).toBe(201);
-  const document = await documentResponse.json() as { id: string };
+  const document = await documentResponse.json() as { id: string; version: number };
+  expect(document.version).toBe(1);
   await expect(page.getByText("Documento salvo na versão 1.", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Fechar documento" }).click();
   await expect(page.getByText("Documento fechado e preservado.", { exact: true })).toBeVisible();
@@ -25,7 +26,7 @@ test("prontuário: documento, prescrição e anexo ficam salvos no backend", asy
     page,
     `/clinical/documents?patientId=${fixture.patientId}&size=20`,
   ), 200);
-  expect(documentHistory.items.find((item) => item.id === document.id)).toMatchObject({ status: "CLOSED", version: 1, content: documentContent });
+  expect(documentHistory.items.find((item) => item.id === document.id)).toMatchObject({ status: "CLOSED", version: 2, content: documentContent });
 
   await page.goto("/more?section=prescriptions");
   await selectPatient(page, fixture.patientName);
