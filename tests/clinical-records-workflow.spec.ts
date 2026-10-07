@@ -40,7 +40,8 @@ test("prontuário: documento, prescrição e anexo ficam salvos no backend", asy
   await page.getByRole("button", { name: "Criar prescrição" }).click();
   const prescriptionResponse = await prescriptionResponsePromise;
   expect(prescriptionResponse.status()).toBe(201);
-  const prescription = await prescriptionResponse.json() as { id: string };
+  const prescription = await prescriptionResponse.json() as { id: string; version: number };
+  expect(prescription.version).toBe(1);
   await expect(page.getByText("Prescrição salva na versão 1.", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Fechar prescrição" }).click();
   await expect(page.getByText("Prescrição fechada e preservada.", { exact: true })).toBeVisible();
@@ -50,7 +51,7 @@ test("prontuário: documento, prescrição e anexo ficam salvos no backend", asy
   ), 200);
   expect(prescriptionHistory.items.find((item) => item.id === prescription.id)).toMatchObject({
     status: "CLOSED",
-    version: 1,
+    version: 2,
     items: [{ medicationName: "Ibuprofeno 600 mg", dosage: "1 comprimido", frequency: "A cada 8 horas" }],
   });
 
