@@ -1,0 +1,213 @@
+.clini-advanced-chart-library .odontogram-root {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  background: transparent;
+  font-family: inherit;
+}
+
+/* The package toolbar is for its standalone demo (branding, GitHub, import and
+   presentation controls). The clinical screen owns its title and save actions. */
+.clini-advanced-chart-library .topbar {
+  display: none !important;
+}
+
+.clini-advanced-chart-library .layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  padding: 0;
+}
+
+.clini-advanced-chart-library .chart-column,
+.clini-advanced-chart-library .panel,
+.clini-advanced-chart-library .chart {
+  width: 100%;
+  min-width: 0;
+}
+
+.clini-advanced-chart-library .chart {
+  overflow: hidden;
+  border-radius: 14px;
+}
+
+.clini-advanced-chart-library .chart-header {
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 12px;
+}
+
+.clini-advanced-chart-library .chart-mode-toggle {
+  max-width: 100%;
+}
+
+.clini-advanced-chart-library .chart-mode-btn {
+  min-height: 44px;
+}
+
+.clini-advanced-chart-library .chart-actions .btn-icon {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.clini-advanced-chart-library .perio-launch-bar {
+  justify-content: stretch;
+}
+
+.clini-advanced-chart-library .perio-launch-bar > * {
+  min-height: 44px;
+}
+
+.clini-advanced-chart-library .odon-arch-toggle .odon-arch-btn {
+  min-height: 44px;
+  padding-inline: 8px;
+}
+
+.clini-advanced-chart-library #toothGrid {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+
+.clini-advanced-chart-library #toothGrid:not([data-anatomy="measured"]) {
+  grid-template-columns: repeat(16, minmax(30px, 38px));
+}
+
+.clini-advanced-chart-library #toothGrid[data-anatomy="measured"] .tooth-arch {
+  width: max-content;
+  max-width: none;
+  min-width: max-content;
+  grid-template-columns: repeat(16, minmax(30px, 38px));
+  gap: 3px;
+}
+
+.clini-advanced-chart-library #toothGrid .tooth-label-cell {
+  min-width: 30px;
+  min-height: 40px;
+  font-size: 11px;
+}
+
+.clini-advanced-chart-library #toothGrid .tooth-tile {
+  min-height: 76px;
+  border-radius: 8px;
+}
+
+.clini-advanced-chart-library #toothGrid .tooth-tile .tooth-svg {
+  display: flex;
+  height: 68px;
+  align-items: center;
+  justify-content: center;
+}
+
+.clini-advanced-chart-library #toothGrid .tooth-tile .tooth-svg svg {
+  width: auto;
+  max-width: 100%;
+  max-height: 64px;
+  height: auto;
+}
+
+.clini-advanced-chart-library #toothGrid .tooth-tile.occl-view {
+  min-height: 56px;
+}
+
+.clini-advanced-chart-library #toothGrid .tooth-tile.occl-view .tooth-svg {
+  height: 48px;
+}
+
+.clini-advanced-chart-library #toothGrid .tooth-tile.occl-view .tooth-svg svg {
+  max-height: 44px;
+}
+
+@media (max-width: 640px) {
+  .clini-advanced-chart-library {
+    padding: 8px;
+  }
+
+  .clini-advanced-chart-library .layout {
+    gap: 10px;
+  }
+
+  .clini-advanced-chart-library .chart-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    padding: 10px;
+  }
+
+  .clini-advanced-chart-library .chart-mode-toggle {
+    display: flex;
+    width: 100%;
+  }
+
+  .clini-advanced-chart-library .chart-mode-btn {
+    flex: 1 1 0;
+    padding-inline: 8px;
+  }
+
+  .clini-advanced-chart-library .chart-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .clini-advanced-chart-library .odon-arch-toggle {
+    gap: 6px;
+    padding: 8px;
+  }
+
+  .clini-advanced-chart-library .odon-arch-toggle .odon-arch-btn {
+    flex: 1 1 0;
+    padding-inline: 4px;
+    font-size: 12px;
+  }
+
+  .clini-advanced-chart-library #toothGrid[data-anatomy="measured"] .tooth-arch {
+    grid-template-columns: repeat(16, minmax(30px, 34px));
+    gap: 2px;
+  }
+
+  .clini-advanced-chart-library #toothGrid .tooth-label-cell {
+    min-width: 30px;
+    min-height: 36px;
+    padding: 2px 0;
+    font-size: 10px;
+  }
+
+  .clini-advanced-chart-library #toothGrid .tooth-tile {
+    min-height: 68px;
+    padding: 1px;
+  }
+
+  .clini-advanced-chart-library #toothGrid .tooth-tile .tooth-svg {
+    height: 60px;
+  }
+
+  .clini-advanced-chart-library #toothGrid .tooth-tile .tooth-svg svg {
+    max-height: 56px;
+  }
+
+  .clini-advanced-chart-library #toothGrid .tooth-tile.occl-view {
+    min-height: 52px;
+  }
+
+  .clini-advanced-chart-library #toothGrid .tooth-tile.occl-view .tooth-svg {
+    height: 44px;
+  }
+
+  .clini-advanced-chart-library #toothGrid .tooth-tile.occl-view .tooth-svg svg {
+    max-height: 40px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .clini-advanced-chart-library .layout {
+    grid-template-columns: minmax(0, 1.6fr) minmax(20rem, 1fr);
+    align-items: start;
+  }
+}

@@ -15,7 +15,8 @@ import { useEffect, useRef, useState } from "react";
 
 import type { AdvancedOdontogramPayload } from "@/modules/clinical/odontogram-api";
 import { Button } from "@/components/ui/button";
-import "react-advanced-odontogram/style.css";
+import "./react-advanced-odontogram-vendor.css";
+import "./advanced-clinical-odontogram.css";
 
 const EMPTY_STATUS_CHART = cloneChart(getStatusChart());
 const EMPTY_PLAN_CHART = cloneChart(getPlanChart());
@@ -110,9 +111,9 @@ export function AdvancedClinicalOdontogram({ patientId, initialPayload, version,
     </header>
 
     {saveError ? <p aria-live="assertive" className="rounded-lg border border-danger/20 bg-red-50 px-3 py-2 text-sm text-danger">{saveError}</p> : null}
-    <p className="text-sm leading-5 text-muted-foreground">Toque em um dente para registrar cárie por face, restaurações, endodontia, implantes ou aparelho. Use a opção “Estado periodontal” da biblioteca para abrir a periodontia.</p>
-    <div className="min-w-0 overflow-x-auto rounded-xl border border-border bg-white p-2 sm:p-4" data-testid="advanced-odontogram-library">
-      <div className="min-w-[18rem]">
+    <p className="text-sm leading-5 text-muted-foreground">Toque em um dente para registrar a condição ou o tratamento. No celular, deslize o mapa para percorrer a arcada. A periodontia fica na aba ao lado.</p>
+    <div className="clini-advanced-chart-library min-w-0 rounded-xl border border-border bg-white p-2 sm:p-4" data-testid="advanced-odontogram-library">
+      <div className="min-w-0">
         <OdontogramShell
           enableIcdas
           language="pt-br"

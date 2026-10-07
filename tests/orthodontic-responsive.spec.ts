@@ -6,10 +6,13 @@ test("odontograma avançado salva achados por superfície no prontuário e resta
   const route = `/more?section=odontogram&patientId=${fixture.patientId}`;
   await page.goto(route);
   await expect(page.getByTestId("advanced-clinical-odontogram")).toBeVisible();
+  await expect(page.locator(".clini-advanced-chart-library .topbar")).toBeHidden();
 
   const tooth16 = page.locator('[role="option"][aria-label*="16"]').first();
   await expect(tooth16).toBeVisible();
   await tooth16.click();
+  await expect(tooth16).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator("#activeToothLabel")).toContainText("16");
   const occlusalSurface = page.getByRole("checkbox", { name: /oclusal/i }).first();
   await expect(occlusalSurface).toBeVisible();
   await occlusalSurface.check();
@@ -18,6 +21,24 @@ test("odontograma avançado salva achados por superfície no prontuário e resta
   for (const width of [320, 375, 414, 768]) {
     await page.setViewportSize({ width, height: 900 });
     await assertNoHorizontalOverflow(page);
+    const chartLayout = await page.evaluate(() => {
+      const chart = document.querySelector<HTMLElement>(".clini-advanced-chart-library .chart");
+      const grid = document.querySelector<HTMLElement>(".clini-advanced-chart-library #toothGrid");
+      const chartModeButton = document.querySelector<HTMLElement>(".clini-advanced-chart-library .chart-mode-btn");
+      return {
+        chartWidth: chart?.getBoundingClientRect().width ?? 0,
+        gridClientWidth: grid?.clientWidth ?? 0,
+        gridScrollWidth: grid?.scrollWidth ?? 0,
+        chartModeButtonHeight: chartModeButton?.getBoundingClientRect().height ?? 0,
+      };
+    });
+    expect(chartLayout.chartWidth, `cartão do odontograma deve caber em ${width}px`).toBeLessThanOrEqual(width + 1);
+    if (width <= 414) {
+      expect(chartLayout.chartModeButtonHeight).toBeGreaterThanOrEqual(44);
+    }
+    if (width === 320) {
+      expect(chartLayout.gridScrollWidth).toBeGreaterThan(chartLayout.gridClientWidth);
+    }
   }
 
   await page.getByTestId("save-advanced-odontogram").click();

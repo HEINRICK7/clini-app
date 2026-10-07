@@ -16,6 +16,7 @@ export const test = base.extend({
     const consoleErrors: string[] = [];
     const pageErrors: string[] = [];
     const serverErrors: string[] = [];
+    const notFoundResponses: string[] = [];
 
     page.on("console", (message) => {
       if (message.type() === "error" && !(expectedConsoleErrorPatterns.get(page) ?? []).some((pattern) => pattern.test(message.text()))) {
@@ -24,6 +25,9 @@ export const test = base.extend({
     });
     page.on("pageerror", (error) => pageErrors.push(error.message));
     page.on("response", (response) => {
+      if (response.status() === 404) {
+        notFoundResponses.push(`${response.status()} ${new URL(response.url()).pathname}`);
+      }
       if (response.status() >= 500 && !(expectedServerErrorPatterns.get(page) ?? []).some((pattern) => pattern.test(response.url()))) {
         serverErrors.push(`${response.status()} ${response.url()}`);
       }
@@ -33,7 +37,7 @@ export const test = base.extend({
     // eslint-disable-next-line react-hooks/rules-of-hooks
     await use(page);
 
-    const diagnostics = { consoleErrors, pageErrors, serverErrors };
+    const diagnostics = { consoleErrors, pageErrors, serverErrors, notFoundResponses };
     if (consoleErrors.length || pageErrors.length || serverErrors.length) {
       await testInfo.attach("browser-diagnostics.json", {
         body: Buffer.from(JSON.stringify(diagnostics, null, 2)),
