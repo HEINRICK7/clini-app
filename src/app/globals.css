@@ -47,12 +47,20 @@
 }
 
 html {
+  /* The odontogram vendor stylesheet sets html/body to height: 100%. Let
+     long clinical pages grow so mobile browsers can scroll to their end. */
+  height: auto;
+  min-height: 100vh;
+  min-height: 100dvh;
   background: var(--background);
   width: 100%;
   min-width: 0;
 }
 
 body {
+  height: auto;
+  min-height: 100vh;
+  min-height: 100dvh;
   width: 100%;
   min-width: 0;
   background: var(--background);

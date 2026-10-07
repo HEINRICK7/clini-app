@@ -63,11 +63,13 @@ test("odontograma avançado salva achados por superfície no prontuário e resta
         const navigation = document.querySelector<HTMLElement>('nav[aria-label="Navegação principal"]');
         return {
           canScroll: scroller.scrollHeight > window.innerHeight && scroller.scrollTop > 0,
+          bodyGrowsWithContent: document.body.getBoundingClientRect().height > window.innerHeight,
           panelBottomVisible: Boolean(panel && navigation
             && panel.getBoundingClientRect().bottom <= navigation.getBoundingClientRect().top),
         };
       });
       expect(pageScroll.canScroll, `a tela deve rolar para mostrar o restante em ${width}px`).toBe(true);
+      expect(pageScroll.bodyGrowsWithContent, `a página deve crescer com o conteúdo em ${width}px`).toBe(true);
       expect(pageScroll.panelBottomVisible, `o fim dos controles deve ser alcançável pela rolagem da tela em ${width}px`).toBe(true);
     }
     if (width <= 414) {
@@ -100,6 +102,7 @@ test("odontograma avançado salva achados por superfície no prontuário e resta
 
   await page.reload();
   await expect(page.getByTestId("advanced-clinical-odontogram")).toBeVisible();
+  await page.locator('[role="option"][aria-label*="16"]').first().click();
   await expect(page.getByRole("checkbox", { name: /oclusal/i }).first()).toBeChecked();
   const afterReload = expectStatus(await api<typeof firstSave>(page, `/clinical/odontograms?patientId=${fixture.patientId}`), 200);
   expect(afterReload.chartPayload).toEqual(firstSave.chartPayload);

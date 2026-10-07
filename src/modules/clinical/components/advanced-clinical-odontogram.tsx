@@ -49,6 +49,7 @@ export function AdvancedClinicalOdontogram({ patientId, initialPayload, version,
   const [dirty, setDirty] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const payloadRef = useRef(initialPayload);
+  const savedChartSignatureRef = useRef<string | null>(null);
 
   useEffect(() => {
     payloadRef.current = initialPayload;
@@ -64,9 +65,12 @@ export function AdvancedClinicalOdontogram({ patientId, initialPayload, version,
       importStatus(saved?.statusChart ?? EMPTY_STATUS_CHART);
       setPlanChart(saved?.planChart ?? EMPTY_PLAN_CHART);
       setChartMode("status");
+      savedChartSignatureRef.current = chartSignature(getStatusChart(), getPlanChart());
       setDirty(false);
       setReady(true);
-      unsubscribe = onStateChange(() => setDirty(true));
+      unsubscribe = onStateChange(() => {
+        setDirty(chartSignature(getStatusChart(), getPlanChart()) !== savedChartSignatureRef.current);
+      });
     }, 0);
 
     return () => {
@@ -87,6 +91,7 @@ export function AdvancedClinicalOdontogram({ patientId, initialPayload, version,
     };
     try {
       await onSave(payload);
+      savedChartSignatureRef.current = chartSignature(payload.statusChart, payload.planChart);
       setDirty(false);
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : "Não foi possível salvar o odontograma.");
@@ -147,4 +152,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function cloneChart<T>(chart: T): T {
   return JSON.parse(JSON.stringify(chart)) as T;
+}
+
+function chartSignature(statusChart: unknown, planChart: unknown): string {
+  return JSON.stringify({ statusChart, planChart });
 }
