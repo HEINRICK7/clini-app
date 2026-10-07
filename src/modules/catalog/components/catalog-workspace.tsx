@@ -58,7 +58,7 @@ export function CatalogWorkspace() {
     onSuccess: async (procedure) => {
       setPrice(formatPrice(procedure.unitConfiguration?.priceCents));
       setDuration(procedure.unitConfiguration?.durationMinutes?.toString() ?? "");
-      setMessage("Configuração da Unit salva.");
+      setMessage("Configuração do consultório salva.");
       await refresh();
     },
     onError: (error) => setMessage(errorMessage(error)),

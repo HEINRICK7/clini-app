@@ -45,44 +45,62 @@ test("GF-04 novo paciente: cadastro feito pela interface aparece na lista", asyn
   await expect(page.getByRole("heading", { name: patientName })).toBeVisible();
 });
 
-test("GF-05 agenda: cria atendimento e o exibe no período selecionado", async ({ page }, testInfo) => {
+test("GF-05 agenda: cria atendimento e o exibe no período selecionado", async ({ page }) => {
   await loginAsOwner(page);
-  const fixture = await createE2EFixture(page);
-  const projectIndex = ({ desktop: 0, tablet: 1, "mobile-375": 2, "mobile-390": 3 } as Record<string, number>)[testInfo.project.name] ?? 4;
-  const runSeed = Number(process.env.GITHUB_RUN_ID ?? Date.now());
-  const appointmentDayOffset = 1 + (runSeed % 365) + projectIndex * 14 + testInfo.retry * 56;
-  const scheduleHours = expectStatus(await api<Array<{ dayOfWeek: number; startsAt: string; endsAt: string }>>(page, `/units/${fixture.unitId}/availability`), 200);
-  const availableSlots = scheduleHours.filter((hour) => {
-    const toMinutes = (value: string) => Number(value.slice(0, 2)) * 60 + Number(value.slice(3, 5));
-    return toMinutes(hour.endsAt) - toMinutes(hour.startsAt) >= 30;
-  });
-  const slot = availableSlots[0];
-  const appointmentStart = slot?.startsAt.slice(0, 5) ?? "09:00";
-  const [startHour, startMinute] = appointmentStart.split(":").map(Number);
-  const appointmentEndMinutes = startHour * 60 + startMinute + 30;
-  const appointmentEnd = `${String(Math.floor(appointmentEndMinutes / 60)).padStart(2, "0")}:${String(appointmentEndMinutes % 60).padStart(2, "0")}`;
-  const appointmentDate = await page.evaluate(({ dayOffset, availableDays }) => {
-    const date = new Date();
-    date.setUTCHours(12, 0, 0, 0);
-    date.setUTCDate(date.getUTCDate() + dayOffset);
-    const weekdayNumbers: Record<string, number> = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7 };
-    for (let offset = 0; offset < 14; offset += 1) {
-      const weekday = new Intl.DateTimeFormat("en-US", { timeZone: "America/Fortaleza", weekday: "short" }).format(date);
-      if (!availableDays.length || availableDays.includes(weekdayNumbers[weekday])) break;
-      date.setUTCDate(date.getUTCDate() + 1);
+  const suffix = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+  const unit = expectStatus(await api<{ id: string }>(page, "/units", {
+    method: "POST",
+    body: { name: `E2E agenda isolada ${suffix}`, city: "Fortaleza" },
+  }), 201);
+  const patientName = `E2E Paciente agenda ${suffix}`;
+  const patient = expectStatus(await api<{ id: string }>(page, "/patients", {
+    method: "POST",
+    body: { currentUnitId: unit.id, fullName: patientName, email: `agenda-${suffix}@example.com` },
+  }), 201);
+  const windows = await page.evaluate(() => {
+    const candidates: Array<{ date: string; start: string; end: string; startsAt: string; endsAt: string }> = [];
+    const dateFormatter = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Fortaleza", year: "numeric", month: "2-digit", day: "2-digit",
+    });
+    for (let dayOffset = 1; dayOffset <= 30; dayOffset += 1) {
+      const date = new Date();
+      date.setHours(12, 0, 0, 0);
+      date.setDate(date.getDate() + dayOffset);
+      const dateParts = Object.fromEntries(dateFormatter.formatToParts(date).map((part) => [part.type, part.value]));
+      const dateString = `${dateParts.year}-${dateParts.month}-${dateParts.day}`;
+      for (let startMinutes = 8 * 60; startMinutes < 20 * 60; startMinutes += 30) {
+        const endMinutes = startMinutes + 30;
+        const start = `${String(Math.floor(startMinutes / 60)).padStart(2, "0")}:${String(startMinutes % 60).padStart(2, "0")}`;
+        const end = `${String(Math.floor(endMinutes / 60)).padStart(2, "0")}:${String(endMinutes % 60).padStart(2, "0")}`;
+        candidates.push({
+          date: dateString,
+          start,
+          end,
+          startsAt: new Date(`${dateString}T${start}:00-03:00`).toISOString(),
+          endsAt: new Date(`${dateString}T${end}:00-03:00`).toISOString(),
+        });
+      }
     }
-    const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Fortaleza", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(date);
-    const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
-    return `${values.year}-${values.month}-${values.day}`;
-  }, { dayOffset: appointmentDayOffset, availableDays: availableSlots.map(({ dayOfWeek }) => dayOfWeek) });
+    return candidates;
+  });
+  const range = new URLSearchParams({ from: windows[0].startsAt, to: windows.at(-1)!.endsAt, unitId: unit.id });
+  const agenda = expectStatus(await api<{
+    appointments: Array<{ startsAt: string; endsAt: string }>;
+    blocks: Array<{ startsAt: string; endsAt: string }>;
+  }>(page, `/agenda?${range.toString()}`), 200);
+  const occupied = [...agenda.appointments, ...agenda.blocks];
+  const slot = windows.find((candidate) => !occupied.some((entry) =>
+    Date.parse(candidate.startsAt) < Date.parse(entry.endsAt)
+      && Date.parse(candidate.endsAt) > Date.parse(entry.startsAt)));
+  if (!slot) throw new Error("Não há horário livre para validar o fluxo da agenda nos próximos 30 dias.");
 
-  await page.goto(`/agenda?patientId=${fixture.patientId}`);
+  await page.goto(`/agenda?patientId=${patient.id}`);
   await expect(page.getByRole("heading", { name: "Adicionar à agenda" })).toBeVisible();
-  await page.getByLabel("Local de atendimento").selectOption(fixture.unitId);
-  await page.getByLabel("Paciente").selectOption(fixture.patientId);
-  await page.locator('input[type="date"]').first().fill(appointmentDate);
-  await page.getByRole("textbox", { name: "Início", exact: true }).fill(appointmentStart);
-  await page.getByRole("textbox", { name: "Fim", exact: true }).fill(appointmentEnd);
+  await page.getByLabel("Local de atendimento").selectOption(unit.id);
+  await page.getByLabel("Paciente").selectOption(patient.id);
+  await page.locator('input[type="date"]').first().fill(slot.date);
+  await page.getByRole("textbox", { name: "Início", exact: true }).fill(slot.start);
+  await page.getByRole("textbox", { name: "Fim", exact: true }).fill(slot.end);
   const appointmentResponsePromise = page.waitForResponse((response) => response.request().method() === "POST" && new URL(response.url()).pathname.endsWith("/agenda/appointments"));
   await page.getByRole("button", { name: "Criar atendimento" }).click();
   const appointmentResponse = await appointmentResponsePromise;
@@ -90,7 +108,7 @@ test("GF-05 agenda: cria atendimento e o exibe no período selecionado", async (
 
   await expect(page.getByText("Atendimento criado.", { exact: true })).toBeVisible();
   await expect(page.getByText("Atendimento agendado")).toBeVisible();
-  await expect(page.getByRole("heading", { name: fixture.patientName })).toBeVisible();
+  await expect(page.getByRole("heading", { name: patientName })).toBeVisible();
 });
 
 test("GF-03 odontograma: registra procedimento no dente 16 e confirma o histórico", async ({ page }) => {
@@ -227,11 +245,11 @@ test("GF-08 fluxo do dentista: consultório, paciente, agenda, dente e tratament
   expect(procedureResponse.status()).toBe(201);
   const procedure = await procedureResponse.json() as { id: string };
   await expect(page.getByText("Procedimento criado.", { exact: true })).toBeVisible();
-  await page.getByLabel("Unit").selectOption(unit.id);
+  await page.getByLabel("Consultório").selectOption(unit.id);
   await page.getByLabel("Preço (R$)").fill("100,00");
   await page.getByLabel("Duração (minutos)").fill("30");
-  await page.getByRole("button", { name: "Salvar na Unit", exact: true }).click();
-  await expect(page.getByText("Configuração da Unit salva.", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Salvar no consultório", exact: true }).click();
+  await expect(page.getByText("Configuração do consultório salva.", { exact: true })).toBeVisible();
 
   await page.goto(`/more?section=treatments&patientId=${patient.id}`);
   await page.getByLabel("Nome do tratamento").fill(treatmentName);
