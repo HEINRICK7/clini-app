@@ -84,8 +84,11 @@ test("odontograma: cada dente possui nome acessível e o painel contextual é id
 
   const teeth = page.locator('[role="option"]');
   await expect(teeth).toHaveCount(32);
-  const labels = await teeth.evaluateAll((items) => items.map((item) => item.getAttribute("aria-label")));
-  expect(labels.every((label) => Boolean(label?.match(/^Dente (1[1-8]|2[1-8]|3[1-8]|4[1-8])$/)))).toBe(true);
+  await expect.poll(async () => {
+    const labels = await teeth.evaluateAll((items) => items.map((item) => item.getAttribute("aria-label")));
+    const toothIds = labels.map((label) => label?.match(/^Dente (1[1-8]|2[1-8]|3[1-8]|4[1-8])\b/)?.[1] ?? null);
+    return toothIds.every(Boolean) && new Set(toothIds).size === 32;
+  }).toBe(true);
 
   await teeth.first().click();
   await expect(page.getByRole("complementary", { name: /Detalhes do dente/ })).toBeVisible();

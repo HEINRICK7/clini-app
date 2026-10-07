@@ -30,7 +30,7 @@ export function CliniOdontogram({ patientId, unitId, appointmentId, readOnly = f
   const [message, setMessage] = useState<string | null>(null);
   const [showNextSteps, setShowNextSteps] = useState(false);
   const [activeView, setActiveView] = useState<"advanced" | "history">(() =>
-    onFinishAppointment || onContinueAppointment ? "history" : "advanced");
+    readOnly || onFinishAppointment || onContinueAppointment ? "history" : "advanced");
   const idempotencyKeyRef = useRef<string | null>(null);
   const odontogramRootRef = useRef<HTMLDivElement>(null);
   const odontogramQuery = useQuery({ queryKey: ["patient-odontogram", patientId], queryFn: () => clinicalOdontograms.getPatientOdontogram(patientId), enabled: Boolean(patientId), retry: false });

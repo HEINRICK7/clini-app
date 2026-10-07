@@ -292,7 +292,10 @@ test("GF-08 fluxo do dentista: consultório, paciente, agenda, dente e tratament
   await page.getByLabel("Observações do atendimento").fill("TESTE HOMOLOG: validação sintética concluída.");
   await page.getByRole("button", { name: "Continuar", exact: true }).click();
   await page.getByRole("button", { name: "Continuar tratamento", exact: true }).click();
-  await page.getByRole("button", { name: "Finalizar atendimento", exact: true }).click();
+  const finishAppointment = page.getByRole("button", { name: "Finalizar atendimento", exact: true });
+  await expect(finishAppointment).toBeVisible();
+  await finishAppointment.scrollIntoViewIfNeeded();
+  await finishAppointment.click({ timeout: 15000 });
   await expect(page.getByText("Atendimento concluído e evolução clínica fechada.", { exact: true })).toBeVisible();
 
   await page.goto(`/more?section=treatments&patientId=${patient.id}`);

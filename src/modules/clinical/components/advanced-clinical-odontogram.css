@@ -175,6 +175,39 @@
     gap: 6px;
   }
 
+  .clini-advanced-chart-library .perio-launch-bar {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: stretch;
+    gap: 4px;
+  }
+
+  .clini-advanced-chart-library .perio-launch-bar #appViewToggle {
+    display: contents;
+  }
+
+  .clini-advanced-chart-library .perio-launch-bar .chart-mode-btn,
+  .clini-advanced-chart-library .perio-launch-bar > button {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+    padding-inline: 4px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    font-size: 11px;
+    line-height: 1.2;
+    text-align: center;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .clini-advanced-chart-library .perio-launch-bar .chart-mode-btn.is-active {
+    border-color: var(--accent);
+  }
+
   .clini-advanced-chart-library .odon-arch-toggle {
     gap: 6px;
     padding: 8px;

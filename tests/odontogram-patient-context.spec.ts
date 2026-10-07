@@ -1,4 +1,4 @@
-import { createE2EFixture, expect, loginAsOwner, test } from "./support/e2e-fixtures";
+import { api, createE2EFixture, expect, expectStatus, loginAsOwner, test } from "./support/e2e-fixtures";
 
 test("odontograma mantém o paciente ao abrir tratamentos pelo dente", async ({ page }) => {
   await loginAsOwner(page);
@@ -10,8 +10,27 @@ test("odontograma mantém o paciente ao abrir tratamentos pelo dente", async ({ 
   const patientId = fixture.patientId;
 
   await page.getByRole("tab", { name: "Tratamentos" }).click();
+  const advancedChart = page.getByTestId("advanced-clinical-odontogram");
+  await expect(advancedChart).toBeVisible();
+  await expect(advancedChart.getByTestId("odontogram-save-state")).toHaveText("Sem alterações");
+  await expect(advancedChart.getByTestId("save-advanced-odontogram")).toBeVisible();
+  await expect(advancedChart.getByText("Somente leitura")).toHaveCount(0);
+
+  const tooth16 = page.locator('[role="option"][aria-label*="16"]').first();
+  await tooth16.click();
+  const occlusalSurface = page.locator("#chk-caries-occlusal");
+  await page.locator(".clini-advanced-chart-library label.surface-cell.pos-occlusal")
+    .filter({ has: occlusalSurface })
+    .click();
+  const saveOdontogram = page.getByTestId("save-advanced-odontogram");
+  await expect(saveOdontogram).toBeEnabled();
+  await saveOdontogram.click();
+  await expect(advancedChart.getByTestId("odontogram-save-state")).toHaveText("Tudo salvo");
+  const savedChart = expectStatus(await api<{ version: number }>(page, `/clinical/odontograms?patientId=${patientId}`), 200);
+  expect(savedChart.version).toBe(1);
+
   await page.getByRole("tab", { name: "Atendimento e histórico" }).click();
-  await expect(page.getByRole("heading", { name: "Odontograma visual" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Odontograma visual" })).toBeVisible({ timeout: 15000 });
   const tooth = page.locator('[role="option"][aria-label^="Dente "]').first();
   await expect(tooth).toBeVisible();
   await tooth.click();

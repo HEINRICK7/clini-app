@@ -7,6 +7,7 @@ test("odontograma avançado salva achados por superfície no prontuário e resta
   await page.goto(route);
   await expect(page.getByTestId("advanced-clinical-odontogram")).toBeVisible();
   await expect(page.locator(".clini-advanced-chart-library .topbar")).toBeHidden();
+  await expect(page.getByText("React Advanced Odontogram", { exact: false })).toBeHidden();
 
   const tooth16 = page.locator('[role="option"][aria-label*="16"]').first();
   await expect(tooth16).toBeVisible();
@@ -15,7 +16,9 @@ test("odontograma avançado salva achados por superfície no prontuário e resta
   await expect(page.locator("#activeToothLabel")).toContainText("16");
   const occlusalSurface = page.locator("#chk-caries-occlusal");
   await expect(occlusalSurface).toBeVisible();
-  await page.locator(".clini-advanced-chart-library label.surface-cell.pos-occlusal").click();
+  await page.locator(".clini-advanced-chart-library label.surface-cell.pos-occlusal")
+    .filter({ has: occlusalSurface })
+    .click();
   await expect(occlusalSurface).toBeChecked();
   await expect(page.getByTestId("save-advanced-odontogram")).toBeEnabled();
 
@@ -36,6 +39,16 @@ test("odontograma avançado salva achados por superfície no prontuário e resta
     expect(chartLayout.chartWidth, `cartão do odontograma deve caber em ${width}px`).toBeLessThanOrEqual(width + 1);
     if (width <= 414) {
       expect(chartLayout.chartModeButtonHeight).toBeGreaterThanOrEqual(44);
+      const toolbarButtons = page.locator(".clini-advanced-chart-library .perio-launch-bar button");
+      await expect(toolbarButtons).toHaveCount(3);
+      const controlsFit = await page.locator(".clini-advanced-chart-library .perio-launch-bar").evaluate((toolbar) => {
+        const bounds = toolbar.getBoundingClientRect();
+        return Array.from(toolbar.querySelectorAll("button")).every((button) => {
+          const buttonBounds = button.getBoundingClientRect();
+          return buttonBounds.height >= 44 && buttonBounds.left >= bounds.left && buttonBounds.right <= bounds.right;
+        });
+      });
+      expect(controlsFit, `controles clínicos devem caber em ${width}px`).toBe(true);
     }
     if (width === 320) {
       expect(chartLayout.gridScrollWidth).toBeGreaterThan(chartLayout.gridClientWidth);
