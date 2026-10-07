@@ -2,9 +2,17 @@
   width: 100%;
   max-width: 100%;
   min-width: 0;
-  overflow: hidden;
+  overflow: visible;
   background: transparent;
   font-family: inherit;
+}
+
+/* Keep the clinical controls in the document flow so the page scroll reaches
+   the whole chart and its actions on phones. The standalone library caps this
+   area to the viewport and creates a second, easy-to-miss vertical scrollbar. */
+.clini-advanced-chart-library .panel-body {
+  max-height: none;
+  overflow: visible;
 }
 
 /* The package toolbar is for its standalone demo (branding, GitHub, import and

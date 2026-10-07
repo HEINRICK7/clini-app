@@ -31,6 +31,7 @@ test("odontograma avançado salva achados por superfície no prontuário e resta
       const chartModeButton = document.querySelector<HTMLElement>(".clini-advanced-chart-library .chart-mode-btn");
       const layout = document.querySelector<HTMLElement>(".clini-advanced-chart-library .layout");
       const controls = document.querySelector<HTMLElement>(".clini-advanced-chart-library .panel");
+      const controlsBody = document.querySelector<HTMLElement>(".clini-advanced-chart-library .panel-body");
       const layoutBounds = layout?.getBoundingClientRect();
       const controlsBounds = controls?.getBoundingClientRect();
       return {
@@ -39,6 +40,8 @@ test("odontograma avançado salva achados por superfície no prontuário e resta
         gridScrollWidth: grid?.scrollWidth ?? 0,
         chartModeButtonHeight: chartModeButton?.getBoundingClientRect().height ?? 0,
         layoutColumnCount: layout ? getComputedStyle(layout).gridTemplateColumns.split(" ").length : 0,
+        controlsBodyMaxHeight: controlsBody ? getComputedStyle(controlsBody).maxHeight : "missing",
+        controlsBodyOverflowY: controlsBody ? getComputedStyle(controlsBody).overflowY : "missing",
         controlsFitLayout: Boolean(layoutBounds && controlsBounds
           && controlsBounds.left >= layoutBounds.left
           && controlsBounds.right <= layoutBounds.right + 1),
@@ -48,6 +51,24 @@ test("odontograma avançado salva achados por superfície no prontuário e resta
     if (width < 1024) {
       expect(chartLayout.layoutColumnCount, `odontograma deve empilhar mapa e controles em ${width}px`).toBe(1);
       expect(chartLayout.controlsFitLayout, `controles devem ocupar a largura disponível em ${width}px`).toBe(true);
+    }
+    if (width <= 414) {
+      expect(chartLayout.controlsBodyMaxHeight, `controles não devem ser cortados em ${width}px`).toBe("none");
+      expect(chartLayout.controlsBodyOverflowY, `controles devem acompanhar a rolagem da página em ${width}px`).toBe("visible");
+      const pageScroll = await page.evaluate(() => {
+        const scroller = document.scrollingElement;
+        if (!scroller) return { canScroll: false, panelBottomVisible: false };
+        scroller.scrollTop = scroller.scrollHeight;
+        const panel = document.querySelector<HTMLElement>(".clini-advanced-chart-library .panel");
+        const navigation = document.querySelector<HTMLElement>('nav[aria-label="Navegação principal"]');
+        return {
+          canScroll: scroller.scrollHeight > window.innerHeight && scroller.scrollTop > 0,
+          panelBottomVisible: Boolean(panel && navigation
+            && panel.getBoundingClientRect().bottom <= navigation.getBoundingClientRect().top),
+        };
+      });
+      expect(pageScroll.canScroll, `a tela deve rolar para mostrar o restante em ${width}px`).toBe(true);
+      expect(pageScroll.panelBottomVisible, `o fim dos controles deve ser alcançável pela rolagem da tela em ${width}px`).toBe(true);
     }
     if (width <= 414) {
       expect(chartLayout.chartModeButtonHeight).toBeGreaterThanOrEqual(44);
