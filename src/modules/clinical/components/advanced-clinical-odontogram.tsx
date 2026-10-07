@@ -115,8 +115,8 @@ export function AdvancedClinicalOdontogram({ patientId, initialPayload, version,
         {!readOnly ? <div aria-live="polite" className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
           <span>{version ? `Versão ${version}` : "Nenhum registro salvo"}</span>
           {savedAt ? <><span aria-hidden="true">·</span><time dateTime={savedAt}>Salvo em {new Date(savedAt).toLocaleString("pt-BR")}</time></> : null}
-          <span aria-live="polite" className={dirty ? "font-semibold text-warning" : "text-success"} data-testid="odontogram-save-state">
-            {dirty ? "Alterações sem salvar" : ready ? version ? "Tudo salvo" : "Sem alterações" : "Carregando dados clínicos…"}
+          <span aria-live="polite" className={saving ? "font-semibold text-primary" : dirty ? "font-semibold text-warning" : "text-success"} data-testid="odontogram-save-state">
+            {saving ? "Salvando alterações…" : dirty ? "Alterações sem salvar" : ready ? version ? "Tudo salvo" : "Sem alterações" : "Carregando dados clínicos…"}
           </span>
         </div> : null}
       </div>

@@ -24,8 +24,11 @@ test("odontograma mantém o paciente ao abrir tratamentos pelo dente", async ({ 
     .click();
   const saveOdontogram = page.getByTestId("save-advanced-odontogram");
   await expect(saveOdontogram).toBeEnabled();
+  const saveResponsePromise = page.waitForResponse((response) => response.request().method() === "POST" && new URL(response.url()).pathname.endsWith("/clinical/odontograms"));
   await saveOdontogram.click();
-  await expect(advancedChart.getByTestId("odontogram-save-state")).toHaveText("Tudo salvo");
+  const saveResponse = await saveResponsePromise;
+  expect(saveResponse.status()).toBe(201);
+  await expect(advancedChart.getByTestId("odontogram-save-state")).toHaveText("Tudo salvo", { timeout: 15000 });
   const savedChart = expectStatus(await api<{ version: number }>(page, `/clinical/odontograms?patientId=${patientId}`), 200);
   expect(savedChart.version).toBe(1);
 

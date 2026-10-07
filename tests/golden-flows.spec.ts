@@ -321,8 +321,11 @@ test("GF-08 fluxo do dentista: consultório, paciente, agenda, dente e tratament
   await page.getByLabel("Procedimento planejado relacionado").selectOption(planned.id);
   await page.getByLabel("Nome do realizado").fill(planned.name);
   await page.getByLabel("Descrição do realizado").fill("TESTE HOMOLOG: finalização sintética; nenhum procedimento clínico real foi executado.");
+  const performedResponsePromise = page.waitForResponse((response) => response.request().method() === "POST" && new URL(response.url()).pathname.includes(`/clinical/treatments/${treatment.id}/performed-procedures`));
   await page.getByRole("button", { name: "Salvar realizado", exact: true }).click();
-  await expect(page.getByText("Procedimento realizado salvo como rascunho.", { exact: true })).toBeVisible();
+  const performedResponse = await performedResponsePromise;
+  expect(performedResponse.status()).toBe(201);
+  await expect(page.getByText("Procedimento realizado salvo como rascunho.", { exact: true })).toBeVisible({ timeout: 15000 });
   await page.getByRole("button", { name: "Fechar realizado", exact: true }).click();
   await expect(page.getByText("Procedimento realizado fechado e preservado.", { exact: true })).toBeVisible();
   await expect(page.getByText("Concluído", { exact: true })).toBeVisible();
